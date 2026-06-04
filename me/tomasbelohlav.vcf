@@ -8,14 +8,15 @@ TITLE:
 TEL;TYPE=CELL:+420608609861
 TEL;TYPE=WORK:
 TEL;TYPE=HOME:
+TEL;TYPE=MSG:+420608609861
 EMAIL;TYPE=WORK:tomas.belohlav@gmail.com
-URL;TYPE=Digital Business Card:https://tomasbelohlav.cz/me
+URL;TYPE=Digital Business Card:https://tomasbelohlav.cz/me/
 URL:
-URL;TYPE=Signal:https://signal.me/#p/+420608609861
 URL;TYPE=WhatsApp:https://wa.me/+420608609861
-URL;TYPE=LinkedIn:https://linkedin.com//in/tomasbelohlav/
-URL;TYPE=Instagram:https://instagram.com/tomasbelohlav
+URL;TYPE=Signal:https://signal.me/#p/https://signal.me/#p/+420608609861
+URL;TYPE=LinkedIn:https://linkedin.com/https://linkedin.com//in/tomasbelohlav/
+URL;TYPE=Instagram:https://instagram.com/https://instagram.com/tomasbelohlav
 KEY;TYPE=PGP;ENCODING=b:
 NOTE:
-UID:EnBizCard-100126625
+UID:EnBizCard-100397022
 END:VCARD
