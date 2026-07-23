@@ -1,0 +1,23 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Bělohlav;Tomáš;;;
+FN:Tomáš Bělohlav
+ORG:ELMAX STORE a.s.
+ADR;TYPE=WORK:Topolová 777/2, 735 42 Těrlicko
+TITLE:Marketing
+TEL;TYPE=CELL:+420608609861
+TEL;TYPE=WORK:
+TEL;TYPE=HOME:
+TEL;TYPE=MSG:
+EMAIL;TYPE=WORK:belohlav@elmax.cz
+URL;TYPE=Digital Business Card:https://tomasbelohlav.cz/elmax
+URL:https://elmax.cz
+URL;TYPE=Website:https://elmax.cz
+URL;TYPE=Signal:https://signal.me/#p/https://signal.me/#p/+420608609861
+URL;TYPE=WhatsApp:https://wa.me/+420608609861
+URL;TYPE=Location:https://maps.app.goo.gl/Cu2MNnYtofA5og2J7
+URL;TYPE=Store:https://maps.app.goo.gl/JB6bnNiMhAiSJKex7
+KEY;TYPE=PGP;ENCODING=b:
+NOTE:
+UID:EnBizCard-100592491
+END:VCARD
