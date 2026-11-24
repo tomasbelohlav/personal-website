@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Truhlář 1 – studijní aplikace</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{display:flex;flex-direction:column;background:#f5f6f8;color:#17212c}
+.toolbar{display:flex;align-items:center;gap:10px;min-height:58px;padding:9px 16px;border-bottom:1px solid #d6dbe0;background:#fff}
+.title{font-size:15px;font-weight:700;margin-right:auto;white-space:nowrap}
+.tool{appearance:none;background:#f3f5f7;color:inherit;border:1px solid #d9dfe5;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer}
+.tool:hover{background:#e6ebf1}.hint{font-size:12px;color:#65707d}
+#app{display:block;flex:1;width:100%;border:0;background:white;min-height:0}
+body.dark{background:#101722;color:#e9eef5}body.dark .toolbar{background:#182332;border-color:#334155}body.dark .tool{background:#263346;border-color:#475569;color:#f5f6fb}body.dark .hint{color:#afbdce}
+@media(max-width:700px){.toolbar{flex-wrap:wrap}.title{width:100%}.hint{display:none}.tool{flex:1}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+ <span class="title">Truhlář 1 <span class="hint">· studijní aplikace</span></span>
+ <span class="hint" id="status">Zvýrazníš text tahem myši.</span>
+ <button class="tool" id="undo" title="Odstranit poslední zvýraznění">↶ Zpět</button>
+ <button class="tool" id="clear" title="Smazat všechna zvýraznění">Smazat zvýraznění</button>
+ <button class="tool" id="theme" aria-pressed="false">🌙 Tmavý režim</button>
+</div>
+<iframe id="app" title="Studijní obsah" src="./Truhlar_1_studijni_aplikace.html"></iframe>
+<script>
+(() => {
+'use strict';
+const frame=document.getElementById('app'), themeBtn=document.getElementById('theme');
+const key='truhlar1.highlights.v1', themeKey='truhlar1.theme.v1';
+let items=[], dark=false, doc=null, observer=null, renderPending=false;
+try{items=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(items))items=[];dark=localStorage.getItem(themeKey)==='dark'}catch(e){items=[]}
+const store=()=>{try{localStorage.setItem(key,JSON.stringify(items))}catch(e){show('Úložiště není dostupné.')}};
+const show=s=>document.getElementById('status').textContent=s;
+function textNodes(d){
+ const w=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT);
+ const a=[];let n;while(n=w.nextNode())a.push(n);return a;
+}
+function offset(d,container,at){
+ let total=0;
+ const w=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT);let n;
+ while(n=w.nextNode()){
+  if(n===container)return total+at;
+  if(n.parentNode===container)return total;
+  total+=n.textContent.length;
+ }
+ return -1;
+}
+function position(nodes,index){
+ let i=index;
+ for(const n of nodes){if(i<=n.textContent.length)return [n,i];i-=n.textContent.length}
+ const n=nodes[nodes.length-1];return n?[n,n.textContent.length]:null;
+}
+function rangeFrom(start,end){
+ const nodes=textNodes(doc);let a=position(nodes,start),b=position(nodes,end);
+ if(!a||!b)return null;
+ const r=doc.createRange();try{r.setStart(...a);r.setEnd(...b);return r}catch(e){return null}
+}
+function applyTheme(){
+ document.body.classList.toggle('dark',dark);
+ themeBtn.textContent=dark?'☀️ Světlý režim':'🌙 Tmavý režim';
+ themeBtn.setAttribute('aria-pressed',String(dark));
+ if(!doc)return;
+ let css=doc.getElementById('study-dark-mode');
+ if(!css){css=doc.createElement('style');css.id='study-dark-mode';doc.head.appendChild(css)}
+ css.textContent=dark? `
+ :root{color-scheme:dark!important}
+ html,body{background:#101722!important;color:#e6edf5!important}
+ body,main,article,section,nav,aside,header,footer,[class*="card"],[class*="panel"],[class*="sidebar"],[class*="content"]{background-color:#172231!important;color:#e6edf5!important}
+ h1,h2,h3,h4,h5,h6,p,li,dt,dd,summary,small,strong,b,span{color:inherit}
+ a{color:#93c5fd!important}button,input,select,textarea{background-color:#263448!important;color:#eef4fa!important;border-color:#52657c!important}
+ table,th,td{background-color:#172231!important;color:#e6edf5!important;border-color:#475569!important}
+ pre,code,blockquote{background-color:#263448!important;color:#edf2f7!important}
+ img,video,svg,canvas{color-scheme:light!important}
+ `:'';
+}
+function paint(){
+ if(!doc)return;
+ if(doc.defaultView.CSS && doc.defaultView.CSS.highlights && doc.defaultView.Highlight){
+  const ranges=items.map(i=>rangeFrom(i.start,i.end)).filter(Boolean);
+  try{doc.defaultView.CSS.highlights.set('study-highlight',new doc.defaultView.Highlight(...ranges))}catch(e){}
+ }
+ show(items.length?items.length+' zvýraznění uloženo':'Zvýrazníš text tahem myši.');
+}
+function schedulePaint(){
+ if(renderPending)return;renderPending=true;
+ requestAnimationFrame(()=>{renderPending=false;paint()});
+}
+function onSelection(){
+ const s=doc.getSelection();if(!s||s.isCollapsed||!s.rangeCount)return;
+ const r=s.getRangeAt(0);
+ if(!doc.body.contains(r.commonAncestorContainer))return;
+ const a=offset(doc,r.startContainer,r.startOffset);
+ const b=offset(doc,r.endContainer,r.endOffset);
+ const text=s.toString().trim();
+ if(a<0||b<=a||!text)return;
+ if(!items.some(x=>x.start===a&&x.end===b)){items.push({start:a,end:b,text:text.slice(0,80)});store();paint()}
+ s.removeAllRanges();
+}
+function init(){
+ try{
+  doc=frame.contentDocument;
+  if(!doc||!doc.body)throw Error('no document');
+  const style=doc.createElement('style');
+  style.textContent='::highlight(study-highlight){background:#ffda63!important;color:#171717!important}::selection{background:#9ccaff}';
+  doc.head.appendChild(style);
+  doc.addEventListener('mouseup',()=>setTimeout(onSelection,0));
+  doc.addEventListener('keyup',e=>{if(e.key==='Shift')onSelection()});
+  if(observer)observer.disconnect();
+  observer=new MutationObserver(schedulePaint);
+  observer.observe(doc.body,{childList:true,subtree:true});
+  applyTheme();paint();
+ }catch(e){show('Stránku otevři přes GitHub Pages, ne jako soubor v náhledu.')}
+}
+themeBtn.addEventListener('click',()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme()});
+document.getElementById('undo').addEventListener('click',()=>{items.pop();store();paint()});
+document.getElementById('clear').addEventListener('click',()=>{
+ if(!items.length)return;
+ if(!confirm('Opravdu smazat všechna zvýraznění?'))return;
+ items=[];store();paint();
+});
+frame.addEventListener('load',init);
+applyTheme();
+})();
+</script>
+</body>
+</html>
