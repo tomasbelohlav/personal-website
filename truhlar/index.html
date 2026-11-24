@@ -198,7 +198,7 @@ function init(){
  }catch(e){status.textContent='Otevři aplikaci přes GitHub Pages.'}
 }
 frame.addEventListener('load',init);
-themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme()};
+themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme();updateChrome()};
 document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
 document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
 
