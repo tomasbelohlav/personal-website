@@ -43,6 +43,21 @@ body.dark .q-section{border-color:#36485e}
 body.dark #contentsRow{border-color:#34465b}
 body.dark #chapterSearch{border-color:#475569;background:#243349;color:white}
 @media(max-width:850px){.toolbar{flex-wrap:nowrap}.toolbar-main{gap:4px;padding:5px 6px}.toolbar-main button{min-width:31px;padding:7px 6px}#chapterSearch{flex:0 0 102px;width:102px}#contentsRow{padding:6px;gap:5px}}
+
+/* Desktop layout: full-width reader, toolbar with title and non-shrinking Q&A drawer. */
+@media (min-width:851px){
+ .toolbar{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px;padding:9px 18px;min-height:64px}
+ .toolbar .title{display:block!important;order:-1;flex:1 1 auto;font-size:17px;white-space:nowrap;margin:0}
+ .toolbar .title .hint{display:inline!important;font-size:12px;font-weight:400}
+ .toolbar-main{order:1;flex:0 0 auto;gap:8px;min-height:0;padding:0}
+ .toolbar-main button{min-width:40px;font-size:14px;padding:9px 12px}
+ .toolbar #status{display:block!important;order:2;max-width:230px;font-size:12px}
+ #contentsRow{order:3;flex:1 0 100%;width:100%;padding:10px 0 2px}
+ #chapterScroller button{font-size:13px;padding:7px 12px}
+ #chapterSearch{width:195px;flex:0 0 195px}
+ #questions{position:absolute;right:0;top:0;bottom:0;width:min(460px,42vw);max-width:100%;box-shadow:-5px 0 18px #0002;z-index:5}
+ #reader{flex:1 1 100%;width:100%;min-width:0}
+}
 </style></head>
 <body>
 <header class="toolbar">
