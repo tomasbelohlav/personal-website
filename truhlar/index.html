@@ -217,7 +217,8 @@ function translateReader(){
  const head=doc.querySelector('header');
  if(head){
   replace(head.querySelector('strong'),'WOODWORKING 1');
-  replace(head.querySelector('small'),'Complete study guide');
+  replace(head.querySelector('small'),'A complete guide to the textbook · 2015 / updated 2026');
+  head.querySelectorAll('.actions a').forEach(a=>{if(a.textContent.trim()==='Obsah')replace(a,'Contents');if(a.textContent.trim()==='Tisk')replace(a,'Print')});
   for(const a of head.querySelectorAll('.actions a')){
    const t=a.textContent.trim();
    if(/otáz|odpověd/i.test(t))replace(a,'Questions and answers');
@@ -313,6 +314,10 @@ function updateChrome(){
  document.querySelector('#undo').textContent=en?'↶ Undo':'↶ Zpět';
  document.querySelector('.q-head strong').textContent=en?'Review questions and answers':'Kontrolní otázky a odpovědi';
  document.querySelector('.title').firstChild.textContent=en?'Woodworking 1 ':'Truhlář 1 ';
+ document.querySelector('.title .hint').textContent=en?'· study reader':'· studijní aplikace';
+ themeBtn.textContent=en?(dark?'☀️ Light mode':'🌙 Dark mode'):(dark?'☀️ Světlý režim':'🌙 Tmavý režim');
+ document.querySelector('#closeQuestions').setAttribute('aria-label',en?'Close questions':'Zavřít otázky');
+ status.textContent=en?(marks.length+' highlights saved · select again to remove'):(marks.length+' zvýraznění · opakovaný výběr je odstraní');
 }
 function applyLanguage(){
  restore();
@@ -335,7 +340,7 @@ function changeLanguage(next){
  applyLanguage();
 }
 langBtn.onclick=()=>changeLanguage(language==='cs'?'en':'cs');
-frame.addEventListener('load',()=>{if(language==='en')applyLanguage()});
+frame.addEventListener('load',()=>{if(language==='en')setTimeout(applyLanguage,0)});
 try{language=localStorage.getItem('truhlar1.language.v2')==='en'?'en':'cs'}catch(e){}
 updateChrome();
 if(language==='en')applyLanguage();
