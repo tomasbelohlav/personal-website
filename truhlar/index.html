@@ -28,16 +28,39 @@ body.dark .qa p,body.dark .hint,body.dark .q-section small{color:#b3c0d1}
 body.dark .q-section{border-color:#36485e}
 @media(max-width:850px){#questions{position:absolute;right:0;top:0;bottom:0;width:min(100%,490px);box-shadow:-5px 0 18px #0002;z-index:4}#status{display:none}.title{width:100%}}
 
+
+.toolbar{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;min-height:0;flex-wrap:nowrap}
+.toolbar-main{display:flex;align-items:center;gap:5px;padding:6px 9px;min-height:46px;flex-wrap:nowrap;white-space:nowrap}
+.toolbar-main button{flex:0 0 auto;padding:7px 9px;min-width:34px;font-size:13px}
+.toolbar-main #toggleContents{font-weight:650}
+.toolbar .hint,.toolbar .title,#undo{display:none!important}
+#contentsRow{display:none;align-items:center;gap:8px;border-top:1px solid #d9dee5;padding:6px 10px;background:inherit}
+#contentsRow.open{display:flex}
+#chapterSearch{width:145px;min-width:85px;flex:0 1 145px;padding:7px 8px;border:1px solid #ccd5df;border-radius:7px;font:inherit;font-size:13px;background:inherit;color:inherit}
+#chapterScroller{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow-x:auto;scrollbar-width:thin;min-width:0;flex:1}
+#chapterScroller button{flex:0 0 auto;font-size:12px;padding:6px 10px;border-radius:20px}
+#chapterScroller button[hidden]{display:none}
+body.dark #contentsRow{border-color:#34465b}
+body.dark #chapterSearch{border-color:#475569;background:#243349;color:white}
+@media(max-width:850px){.toolbar{flex-wrap:nowrap}.toolbar-main{gap:4px;padding:5px 6px}.toolbar-main button{min-width:31px;padding:7px 6px}#chapterSearch{flex:0 0 102px;width:102px}#contentsRow{padding:6px;gap:5px}}
 </style></head>
 <body>
 <header class="toolbar">
- <span class="title">Truhlář 1 <span class="hint">· studijní aplikace</span></span>
- <span class="hint" id="status" aria-live="polite">Označ text myší pro zvýraznění.</span>
- <button id="undo" title="Vrátit poslední změnu zvýraznění">↶ Zpět</button>
- <button id="clear">Smazat zvýraznění</button>
- <button id="toggleQuestions" aria-expanded="false">Otázky a odpovědi</button>
- <button id="lang" aria-pressed="false" title="Přeložit studijní text a otázky do angličtiny; vyžaduje internet">EN</button>
- <button id="theme" aria-pressed="false">🌙 Tmavý režim</button>
+ <div class="toolbar-main">
+  <button id="toggleContents" aria-expanded="false" aria-controls="contentsRow">Obsah ▾</button>
+  <button id="highlight" title="Zvýraznit nebo odstranit výběr" aria-label="Zvýraznit nebo odstranit vybraný text">🖍</button>
+  <button id="clear" title="Smazat všechna zvýraznění" aria-label="Smazat všechna zvýraznění">⌫</button>
+  <button id="toggleQuestions" aria-expanded="false">Q&A</button>
+  <button id="lang" aria-pressed="false" title="Switch language">EN</button>
+  <button id="theme" aria-pressed="false" title="Tmavý režim" aria-label="Přepnout tmavý režim">☾</button>
+ </div>
+ <div id="contentsRow" aria-label="Navigace kapitol">
+  <input type="search" id="chapterSearch" placeholder="Hledat…" aria-label="Hledat kapitoly" autocomplete="off">
+  <nav id="chapterScroller" aria-label="Kapitoly"></nav>
+ </div>
+ <span class="hint" id="status" aria-live="polite">Označ text pro zvýraznění.</span>
+ <button id="undo" hidden>↶ Zpět</button>
+ <span class="title" hidden>Truhlář 1 <span class="hint">· studijní aplikace</span></span>
 </header>
 <main class="workspace">
  <iframe id="reader" title="Studijní obsah" src="./Truhlar_1_studijni_aplikace.html"></iframe>
@@ -193,10 +216,10 @@ function init(){
  try{
   doc=frame.contentDocument;
   if(!doc?.body)throw Error('unavailable iframe');
-  doc.addEventListener('mouseup',()=>setTimeout(choose,0));
+  doc.addEventListener('mouseup',()=>{if(!isTouchDevice())setTimeout(choose,0)});
   doc.addEventListener('keyup',e=>{if(e.key==='Shift')choose()});
   doc.addEventListener('click',()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(paint,120)},true);
-  installInlineAnswers();applyTheme();paint();
+  installInlineAnswers();attachMobileSelection();buildChapterScroller();hideOriginalNav();applyTheme();paint();
  }catch(e){status.textContent='Otevři aplikaci přes GitHub Pages.'}
 }
 frame.addEventListener('load',init);
@@ -204,6 +227,79 @@ themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'
 document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
 document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
 
+
+const contentsRow=document.getElementById('contentsRow'), contentsButton=document.getElementById('toggleContents');
+const chapterScroller=document.getElementById('chapterScroller'), chapterSearch=document.getElementById('chapterSearch');
+const markButton=document.getElementById('highlight');
+let selectedInterval=null;
+const isTouchDevice=()=>window.matchMedia('(pointer:coarse)').matches;
+contentsButton.onclick=()=>{
+ const open=contentsRow.classList.toggle('open');
+ contentsButton.setAttribute('aria-expanded',String(open));
+ contentsButton.textContent=(language==='en'?'Contents':'Obsah')+(open?' ▴':' ▾');
+ if(open){buildChapterScroller();chapterSearch.value='';filterChapters()}
+};
+function buildChapterScroller(){
+ if(!doc)return;
+ const anchors=[...doc.querySelectorAll('aside nav a[href^="#s"]')];
+ if(!anchors.length)return;
+ chapterScroller.replaceChildren();
+ for(const a of anchors){
+  const id=a.getAttribute('href').slice(1);
+  if(!/^s[0-9]+$/.test(id))continue;
+  const btn=document.createElement('button');btn.type='button';
+  btn.textContent=a.textContent.trim();btn.title=btn.textContent;
+  btn.onclick=()=>{a.click();const target=doc.getElementById(id);if(target?.offsetParent!==null)target.scrollIntoView({behavior:'smooth',block:'start'})};
+  chapterScroller.appendChild(btn);
+ }
+ filterChapters();
+}
+function filterChapters(){
+ const query=chapterSearch.value.trim().toLocaleLowerCase();
+ for(const btn of chapterScroller.children)btn.hidden=!!query&&!btn.textContent.toLocaleLowerCase().includes(query);
+}
+chapterSearch.oninput=filterChapters;
+chapterSearch.onkeydown=e=>{if(e.key==='Enter')[...chapterScroller.children].find(b=>!b.hidden)?.click()};
+function hideOriginalNav(){
+ if(!doc)return;
+ let css=doc.getElementById('study-compact-navigation');
+ if(!css){css=doc.createElement('style');css.id='study-compact-navigation';doc.head.appendChild(css)}
+ css.textContent='aside{display:none!important}';
+}
+function recordSelection(){
+ if(!doc)return;
+ const sel=doc.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount)return;
+ const range=sel.getRangeAt(0);
+ if(!doc.body.contains(range.commonAncestorContainer))return;
+ const p=offsets(range);
+ if(p&&p[1]>p[0])selectedInterval=p;
+}
+function toggleSelectedInterval(){
+ if(!selectedInterval)return false;
+ const [from,to]=selectedInterval;
+ history.push(marks.map(x=>({...x})));if(history.length>30)history.shift();
+ if(marks.some(m=>m.from<to&&m.to>from))marks=marks.flatMap(m=>{
+  if(m.to<=from||m.from>=to)return[m];
+  const left=[];
+  if(m.from<from)left.push({from:m.from,to:from});
+  if(m.to>to)left.push({from:to,to:m.to});
+  return left;
+ });
+ else marks.push({from,to});
+ marks.sort((a,b)=>a.from-b.from);
+ selectedInterval=null;doc?.getSelection()?.removeAllRanges();
+ save();paint();return true;
+}
+function attachMobileSelection(){
+ if(!doc)return;
+ doc.addEventListener('selectionchange',recordSelection);
+ doc.addEventListener('touchend',()=>setTimeout(recordSelection,150),{passive:true});
+}
+markButton.addEventListener('pointerdown',recordSelection);
+markButton.onclick=()=>{
+ recordSelection();
+ if(!toggleSelectedInterval())status.textContent=language==='en'?'Select text first':'Nejprve označ text';
+};
 /* Offline Czech/English study version. All English strings are hosted beside
    the study HTML, never sent to a translation API. */
 const langBtn=document.getElementById('lang');
@@ -311,13 +407,17 @@ function updateChrome(){
  langBtn.setAttribute('aria-pressed',String(language==='en'));
  document.documentElement.lang=language;
  const en=language==='en';
- qBtn.textContent=en?'Questions and answers':'Otázky a odpovědi';
- document.querySelector('#clear').textContent=en?'Clear highlights':'Smazat zvýraznění';
+ qBtn.textContent='Q&A';
+ document.querySelector('#clear').textContent='⌫';
  document.querySelector('#undo').textContent=en?'↶ Undo':'↶ Zpět';
  document.querySelector('.q-head strong').textContent=en?'Review questions and answers':'Kontrolní otázky a odpovědi';
- document.querySelector('.title').firstChild.textContent=en?'Woodworking 1 ':'Truhlář 1 ';
+ // Redundant toolbar title removed.
  document.querySelector('.title .hint').textContent=en?'· study reader':'· studijní aplikace';
- themeBtn.textContent=en?(dark?'☀️ Light mode':'🌙 Dark mode'):(dark?'☀️ Světlý režim':'🌙 Tmavý režim');
+ themeBtn.textContent=dark?'☀':'☾';
+ themeBtn.title=en?(dark?'Light mode':'Dark mode'):(dark?'Světlý režim':'Tmavý režim');
+ document.querySelector('#toggleContents').textContent=(en?'Contents':'Obsah')+(contentsRow.classList.contains('open')?' ▴':' ▾');
+ document.querySelector('#chapterSearch').placeholder=en?'Search…':'Hledat…';
+ buildChapterScroller();
  document.querySelector('#closeQuestions').setAttribute('aria-label',en?'Close questions':'Zavřít otázky');
  status.textContent=en?(marks.length+' highlights saved · select again to remove'):(marks.length+' zvýraznění · opakovaný výběr je odstraní');
 }
@@ -350,6 +450,7 @@ function switchLanguage(next){
   localStorage.setItem('truhlar1.language.v2',language);
  }catch(e){marks=[]}
  history=[];
+ selectedInterval=null;
  applyLanguage();
 }
 langBtn.onclick=()=>switchLanguage(language==='cs'?'en':'cs');
