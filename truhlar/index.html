@@ -165,6 +165,28 @@ function applyTheme(){
  st.textContent='::highlight(study-user){background:#ffdc62!important;color:#1d1c14!important} mark.study-user-highlight{background:#ffdc62!important;color:#1d1c14!important}'+
  (dark?'img,video,canvas{filter:invert(1) hue-rotate(180deg)!important}':'');
 }
+function installInlineAnswers(){
+ if(!doc)return;
+ const mapping=[['s0',0],['s4',1],['s5',2],['s6',3],['s6',4],['s7',5],['s8',6],['s9',7],['s10',8],['s11',9],['s13',10],['s14',11],['s15',12],['s16',13],['s17',14],['s18',15],['s19',16]];
+ const encountered={};
+ for(const [article,idx] of mapping){
+  const root=doc.getElementById(article);
+  if(!root)continue;
+  const blockNo=encountered[article]||0;
+  encountered[article]=blockNo+1;
+  const block=root.querySelectorAll('.questions')[blockNo],set=DATA[idx];
+  if(!block||!set)continue;
+  block.querySelectorAll('.study-inline-answer').forEach(el=>el.remove());
+  const qparas=[...block.querySelectorAll(':scope > p')];
+  for(let j=0;j<qparas.length&&j<set.qa.length;j++){
+   const p=doc.createElement('p');
+   p.className='study-inline-answer';
+   p.textContent=set.qa[j][1];
+   p.style.cssText='margin:2px 0 15px 22px;padding:7px 11px;border-left:3px solid #6f9478;background:rgba(98,145,110,.09);font-size:.94em';
+   qparas[j].insertAdjacentElement('afterend',p);
+  }
+ }
+}
 function init(){
  try{
   doc=frame.contentDocument;
@@ -172,7 +194,7 @@ function init(){
   doc.addEventListener('mouseup',()=>setTimeout(choose,0));
   doc.addEventListener('keyup',e=>{if(e.key==='Shift')choose()});
   doc.addEventListener('click',()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(paint,120)},true);
-  applyTheme();paint();
+  installInlineAnswers();applyTheme();paint();
  }catch(e){status.textContent='Otevři aplikaci přes GitHub Pages.'}
 }
 frame.addEventListener('load',init);
