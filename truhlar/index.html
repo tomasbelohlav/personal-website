@@ -1,129 +1,183 @@
 <!doctype html>
-<html lang="cs">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Truhlář 1 – studijní aplikace</title>
 <style>
-*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-body{display:flex;flex-direction:column;background:#f5f6f8;color:#17212c}
-.toolbar{display:flex;align-items:center;gap:10px;min-height:58px;padding:9px 16px;border-bottom:1px solid #d6dbe0;background:#fff}
-.title{font-size:15px;font-weight:700;margin-right:auto;white-space:nowrap}
-.tool{appearance:none;background:#f3f5f7;color:inherit;border:1px solid #d9dfe5;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer}
-.tool:hover{background:#e6ebf1}.hint{font-size:12px;color:#65707d}
-#app{display:block;flex:1;width:100%;border:0;background:white;min-height:0}
-body.dark{background:#101722;color:#e9eef5}body.dark .toolbar{background:#182332;border-color:#334155}body.dark .tool{background:#263346;border-color:#475569;color:#f5f6fb}body.dark .hint{color:#afbdce}
-@media(max-width:700px){.toolbar{flex-wrap:wrap}.title{width:100%}.hint{display:none}.tool{flex:1}}
-</style>
-</head>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background:#f7f8fa;color:#1c2734;display:flex;flex-direction:column}
+.toolbar{display:flex;gap:8px;align-items:center;padding:9px 14px;min-height:58px;border-bottom:1px solid #d9dee5;background:white;flex-wrap:wrap}
+.title{font-size:15px;font-weight:700;margin-right:auto}.hint{font-size:12px;color:#64748b}
+button{font:inherit;cursor:pointer;border-radius:8px;background:#f2f4f7;border:1px solid #d5dce4;color:inherit;padding:8px 11px;font-size:13px}
+button:hover{background:#e7ecf3}button:focus-visible{outline:3px solid #6aa9fa}
+.workspace{display:flex;flex:1;min-height:0;position:relative}
+#reader{width:100%;height:100%;border:0;background:white;flex:1;min-width:0}
+#questions{width:min(490px,45vw);overflow:auto;border-left:1px solid #d9dee5;background:#fff;padding:18px 21px;display:none}
+#questions.open{display:block}
+.q-head{display:flex;align-items:center;gap:8px;position:sticky;top:-18px;background:inherit;padding:12px 0;z-index:2}
+.q-head strong{margin-right:auto}
+.q-section{border-top:1px solid #dce2e9;padding:13px 0}
+.q-section summary{font-weight:650;cursor:pointer;line-height:1.4}
+.q-section small{display:block;color:#64748b;font-size:12px;padding-top:3px;font-weight:400}
+.qa{margin:14px 0 18px;line-height:1.55}
+.qa b{font-size:14px;display:block;margin-bottom:6px}
+.qa p{margin:0;color:#405064;font-size:14px}
+#status{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dark{background:#111a27;color:#e5edf7}
+body.dark .toolbar,body.dark #questions{background:#192434;border-color:#34465b}
+body.dark button{background:#28384d;color:#edf3fb;border-color:#415771}
+body.dark .qa p,body.dark .hint,body.dark .q-section small{color:#b3c0d1}
+body.dark .q-section{border-color:#36485e}
+@media(max-width:850px){#questions{position:absolute;right:0;top:0;bottom:0;width:min(100%,490px);box-shadow:-5px 0 18px #0002;z-index:4}#status{display:none}.title{width:100%}}
+</style></head>
 <body>
-<div class="toolbar">
+<header class="toolbar">
  <span class="title">Truhlář 1 <span class="hint">· studijní aplikace</span></span>
- <span class="hint" id="status">Zvýrazníš text tahem myši.</span>
- <button class="tool" id="undo" title="Odstranit poslední zvýraznění">↶ Zpět</button>
- <button class="tool" id="clear" title="Smazat všechna zvýraznění">Smazat zvýraznění</button>
- <button class="tool" id="theme" aria-pressed="false">🌙 Tmavý režim</button>
-</div>
-<iframe id="app" title="Studijní obsah" src="./Truhlar_1_studijni_aplikace.html"></iframe>
+ <span class="hint" id="status" aria-live="polite">Označ text myší pro zvýraznění.</span>
+ <button id="undo" title="Vrátit poslední změnu zvýraznění">↶ Zpět</button>
+ <button id="clear">Smazat zvýraznění</button>
+ <button id="toggleQuestions" aria-expanded="false">Otázky a odpovědi</button>
+ <button id="theme" aria-pressed="false">🌙 Tmavý režim</button>
+</header>
+<main class="workspace">
+ <iframe id="reader" title="Studijní obsah" src="./Truhlar_1_studijni_aplikace.html"></iframe>
+ <aside id="questions" aria-label="Kontrolní otázky a odpovědi">
+  <div class="q-head"><strong>Kontrolní otázky a odpovědi</strong><button id="closeQuestions" aria-label="Zavřít otázky">✕</button></div>
+  <div id="questionList"></div>
+ </aside>
+</main>
 <script>
 (() => {
 'use strict';
-const frame=document.getElementById('app'), themeBtn=document.getElementById('theme');
-const key='truhlar1.highlights.v1', themeKey='truhlar1.theme.v1';
-let items=[], dark=false, doc=null, observer=null, renderPending=false;
-try{items=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(items))items=[];dark=localStorage.getItem(themeKey)==='dark'}catch(e){items=[]}
-const store=()=>{try{localStorage.setItem(key,JSON.stringify(items))}catch(e){show('Úložiště není dostupné.')}};
-const show=s=>document.getElementById('status').textContent=s;
-function textNodes(d){
- const w=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT);
- const a=[];let n;while(n=w.nextNode())a.push(n);return a;
+const DATA=[{"name":"Vstupní školení BOZP","page":"str. 15","qa":[["Jak poskytnete první pomoc při úrazu?","Zajistím bezpečnost, zjistím stav postiženého a dýchání, zavolám 155 a řídím se operátorem. Při zástavě normálního dýchání zahájím resuscitaci; u krvácení použiji přímý tlak."],["Co je to integrovaný záchranný systém?","Koordinovaná spolupráce hasičů, zdravotnické záchranné služby, Policie ČR a dalších složek při mimořádných událostech."],["Uveďte telefonní čísla pro tísňová volání.","150 hasiči, 155 zdravotnická záchranná služba, 158 Policie ČR, 156 městská policie, 112 jednotné evropské číslo."],["Na co se nesmí použít vodní hasicí přístroj?","Zejména na zařízení pod elektrickým napětím, hořlavé kapaliny a hořící kovy; hasivo musí odpovídat třídě požáru."]]},{"name":"2.2 Měřicí a rýsovací pomůcky","page":"str. 27","qa":[["Jak zjišťujeme kolmost úhelníků?","Porovnáním dvou přesných úhelníků přiložených k sobě, případně kontrolním překlápěním úhelníku u téže rysky."],["K čemu slouží rejsek?","K rýsování čar rovnoběžných s hranou dílce ve zvolené vzdálenosti."],["Nastavte na posuvném měřítku hodnoty 20,5; 30,7 a 27,4 mm.","Nastavím požadované celé milimetry na hlavní stupnici a desetiny podle nonia; prakticky předvedu 20,5; 30,7 a 27,4 mm."],["S jakou přesností měříme v nábytkářství?","Podle učebnice běžně na 1 mm; u přesných spojů a dílců se používá i jemnější měření."]]},{"name":"2.3 Řezání, ruční pily","page":"str. 36","qa":[["Jaké jsou druhy rámových pil?","Rozsečky, osazovačky a vykružovačky."],["K čemu slouží ocaska?","K ručnímu dělení větších dílců, obvykle přímými řezy."],["Jakou pilu užijeme k osazení čepů a výrobě ozubů?","Jemnozubou osazovačku nebo čepovku."],["Jaké jsou zásady pro broušení pilového listu?","Pevně upnout list, trojúhelníkovým pilníkem rovnoměrně ostřit čela zubů, zachovat stejnou výšku zubů (hrotnici), správný tvar a rozvod."],["Co je to hrotnice?","Pomyslná linie spojující hroty pilových zubů; hroty musí mít stejnou výšku."],["Která část pilového listu je hřbet?","Hřbet zubu je jeho šikmá plocha za čelem zubu, opačná vůči řezné čelní ploše."],["Jak vznikají úrazy při práci s pilami?","Nejčastěji vyskočením pily z řezu, neopatrným vedením u ruky, špatným upnutím dílce a nebezpečným odkládáním pily."]]},{"name":"2.4 Hoblování, hoblíky","page":"str. 44","qa":[["Popište jednotlivé části hoblíku.","Tělo, plaz, lůžko, ústí pro třísky, želízko, klín, kolík/úchop a zadní část k držení; u některých hoblíků klopka."],["Ukažte na želízku čelo, hřbet, břit a fazetu.","Čelo a hřbet jsou dvě plochy želízka, jejich průsečnicí je břit; fazeta je vybroušená šikmá plocha u ostří."],["Proč je nutné vlhčit obtahovací kámen?","Kvůli odvádění kovových částeček, snížení zanášení kamene a plynulému obtahování; kapalina musí odpovídat druhu kamene."],["Popište a předveďte obtahování želízka.","Na rovném vhodně zvlhčeném kameni držím stálý úhel fazety, rovnoměrně obtahuji, odstraňuji otřep z druhé strany a dokončím na jemném kameni."],["Jaké nebezpečí pro broušený nástroj vzniká při práci na elektrické brusce?","Přehřátí a popuštění kalené oceli, tedy ztráta tvrdosti břitu a jeho poškození."],["Jakou bezpečnostní pomůcku používáme při práci na elektrické brusce?","Především ochranné brýle nebo vhodný obličejový štít."]]},{"name":"2.4 Hoblování, hoblíky","page":"str. 48","qa":[["Na kterou stranu pokládáme dřevo při počátku hoblování?","Podle učebnice upínáme dílec levou stranou, tj. stranou bližší ke kůře, směrem k ploše hoblice."],["Vyjmenujte základní druhy hoblíků.","Uběrák, hladík, klopkař, římsovník; dále například macek, cidič, zubák a drážkovník."],["K čemu slouží uběrák?","K hrubému úběru materiálu a prvnímu srovnání nerovných ploch."],["Co je to klopka a k čemu slouží?","Příložná část želízka, která láme třísku těsně za břitem a zmenšuje vytrhávání vláken."],["Pokládáme hoblíky na plaz?","Ne. Ostří by se mohlo poškodit; hoblík odkládáme bezpečně na bok nebo tak, aby břit neležel na podložce."]]},{"name":"2.5 Dlabání, dláta","page":"str. 52","qa":[["Vyjmenujte druhy dlát.","Plochá, čepovací (děropáče) a dutá dláta."],["Jak brousíme dláta?","Brousíme fazetu při správném úhlu, nepřehříváme ostří a obtahováním na kameni odstraníme otřep; rohy u plochého dláta zachováme ostré."],["Jaké jsou bezpečnostní zásady při práci s dláty?","Dílec pevně upnout, dláto nikdy nevést proti ruce či tělu, používat paličku a nástroj odkládat ostřím od sebe."]]},{"name":"2.6 Vrtání, nástroje k vrtání","page":"str. 57","qa":[["Vyjmenujte alespoň čtyři vrtáky, které používáme při vrtání do dřeva.","Špulíř, hadovitý, plochý, šroubovitý a Forstnerův vrták."],["Je vhodné vrtat do dřeva vrtákem do železa? A proč?","Lze, ale není to ideální: obvykle chybí vodicí hrot a předřezávače, vrták může uhýbat a vytrhávat vlákna."],["Jaké mohou vzniknout úrazy při práci s vrtáky?","Zaseknutý vrták může roztočit neupnutý dílec, případně může dojít k poranění rotujícím nástrojem a třískami."]]},{"name":"2.7 Pilování a rašplování","page":"str. 61","qa":[["Můžeme použít pilník nebo struhák pro páčení a proč?","Ne. Nástroje jsou tvrdé, ale křehké a při páčení mohou prasknout."],["Jak vyčistíme zalepený pilník nebo struhák?","Ocelovým kartáčem; pryskyřici lze odstranit vhodným čistícím prostředkem podle materiálu a bezpečnostních pokynů."]]},{"name":"2.8 Broušení","page":"str. 65","qa":[["Proč brousíme dřevo?","Abychom odstranili drobné nerovnosti, sjednotili povrch a připravili jej na povrchovou úpravu."],["Jaké brusné prostředky použijeme pro broušení dřeva?","Brusný papír či plátno, brusné houbičky, mřížky a pro některé účely brusnou vlnu."],["Jaké zrnitosti brusných prostředků použijeme pro hrubé, jemné broušení a pro broušení tmelů a laků?","Podle učebnice hrubé P60–90, jemnější P100–180, laky a tmely P220–400; konkrétní zrnitost závisí na podkladu a systému úpravy."]]},{"name":"3.1 Spojování spojovacími prostředky","page":"str. 76","qa":[["Je spoj pomocí hřebíku rozebíratelný?","Učebnice ho řadí mezi mechanické rozebíratelné spoje, avšak rozebrání často poškodí dílce; v praxi nejde o běžně opakovaně demontovatelný spoj."],["Kde je vhodné použít spojení na vrut a váleček, jedná se o nerozebíratelný spoj?","Například pro skříňový a sezonní zahradní nábytek; jde o pevný, ale rozebíratelný spoj."],["Jak vypadá hlavička běžně používaného vrutu?","Často zápustná s křížovou drážkou; podle účelu může být také čočková nebo půlkulatá."],["Do jaké hloubky předvrtáváme otvor pro vruty, jaký použijeme průměr vrtáku?","Učebnice uvádí pro větší vruty předvrtání zhruba do 3/4 délky vrutu; současná praxe volí průměr podle jádra vrutu a výrobce, nikoli univerzálně podle vnějšího průměru."],["Proč je dřevěný kolík rýhovaný?","Rýhy rozvádějí lepidlo a umožňují jeho rovnoměrné rozložení ve spoji."],["Popište výhody a nevýhody spojení pomocí vloženého pera (lamely).","Výhody: snadné přesné sesazení a zpevnění spojení; nevýhody: potřeba lamelovací frézky a vyšší cena lamel oproti kolíkům."]]},{"name":"3.3 Plošné spoje","page":"str. 83","qa":[["Co je to spárovka?","Masivní plošná deska vytvořená slepením užších přířezů po hranách."],["Jaké platí zásady pro výrobu spárovky?","Vybrat vhodné a stejně vysušené dílce, správně orientovat letokruhy, vytvořit rovné styčné hrany, rovnoměrně nanést lepidlo, stáhnout a kontrolovat rovinnost."]]},{"name":"3.4 Rámy","page":"str. 108","qa":[["Vyjmenujte druhy rohových rámových spojů.","Například čep a rozpor, čep a dlab, čep s perem a dlab, přeplátování, kolíkový a ozubový spoj."],["Kde provádíme spoj na čep a dlab?","U rámových konstrukcí, například nábytkových rámů, dveří a sedacího nábytku."],["Budeme vyrábět dlab či rozpor o šířce 7, 13 mm, proč?","Takové rozměry nejsou vhodné pro běžná standardní dláta. Šířku se snažíme navrhnout podle dostupného dláta a technologických možností, aby vznikl přesný dlab."],["Vyjmenujte spoje na ozuby a uveďte použití.","Otevřené, polokryté a celokryté ozuby; používají se zejména u rohů zásuvek a skříňových konstrukcí."],["Co jsou to rybinové ozuby?","Lichoběžníkové ozuby se šikmými boky, které vytvoří pevný spoj odolávající vytažení."]]},{"name":"4.1 Technologická příprava dřeva","page":"str. 121","qa":[["Co to je plastifikace?","Dočasné změkčení dřeva teplem a vlhkostí, které usnadňuje tvarování či výrobu dýh."],["Jaké druhy plastifikace znáte?","Například paření a vaření; používá se vlhké teplo."],["Popište proces přirozeného vysoušení řeziva a kde se vysoušení provádí.","Řezivo se skládá do hrání na proklady na větraném, před deštěm chráněném místě; vysychá okolním vzduchem."],["Popište proces umělého vysoušení řeziva a kde se vysoušení provádí.","V sušárnách se řídí teplota, vlhkost a proudění vzduchu podle sušicího režimu."],["Jaké nebezpečí z hlediska PO vzniká v dřevařských provozech?","Požár a výbuch hořlavého prachu, pilin a odřezků; riziko zvyšují zdroje zapálení a nevhodné skladování."],["Před jakými škodlivými vlivy chráníme dřevo?","Před nadměrnou vlhkostí, dřevokaznými houbami, plísněmi, hmyzem, povětrností a ohněm."],["Jaké druhy ochrany dřeva znáte? Popište je.","Konstrukční ochrana omezuje kontakt s vodou a umožňuje vysychání; chemická využívá vhodné ochranné prostředky podle prostředí a účelu."],["Vyjmenujte alespoň 3 zásady konstrukční ochrany dřeva.","Zabránit zadržování vody, zajistit odvětrávání a odtok vody, oddělit dřevo od země a použít vhodné přesahy a krytí."]]},{"name":"4.2 Pilařská výroba","page":"str. 127","qa":[["Vyjmenujte sortiment pilařské výroby.","Prkna, fošny, hranoly, hranolky, latě a lišty; řezivo se dělí na nehraněné, hraněné a drobné."]]},{"name":"4.3 Výroba dýh a překližek","page":"str. 131","qa":[["Co je to plastifikace výřezů a kterou složku plastifikujeme?","Působení tepla a vlhkosti pro změkčení dřeva před loupáním a krájením; ovlivňuje se především lignin v buněčných stěnách."],["Vyjmenujte způsoby výroby dýh.","Řezáním, loupáním a krájením."],["Popište zjednodušeně výrobu překližek.","Dýhy se připraví a vysuší, nanese se lepidlo, vrstvy se sestaví zpravidla s křížením vláken, lisují se a desky se dokončí."]]},{"name":"4.4 Výroba laťovek","page":"str. 133","qa":[["Čím je tvořena laťovka?","Laťovkovým středem oboustranně překlíženým dýhou."],["Jaké druhy středů rozeznáváme u laťovek?","Středy nelepené a lepené, tvořené jednotlivými dřevěnými prvky."],["Jaké materiály se používají u laťovek s lepenými středy?","Pro střed se používají zejména dřevěné laťky nebo další vhodné dřevní prvky podle technologie výrobce."]]},{"name":"4.5 Aglomerované materiály","page":"str. 143","qa":[["Co jsou aglomerované materiály?","Deskové výrobky ze dřevních částic, štěpek nebo vláken spojených pojivy a lisováním."],["Co to je OSB deska?","Deska z orientovaných velkých dřevních štěpek, vrstvených a slisovaných s pojivem."],["Jak se vyrábí MDF deska?","Dřevo se rozvlákní, vlákna se smísí s pojivem, vytvoří se koberec a za tepla se slisuje do středně husté desky."]]}];
+const frame=document.querySelector('#reader'),themeBtn=document.querySelector('#theme'),panel=document.querySelector('#questions'),qBtn=document.querySelector('#toggleQuestions'),status=document.querySelector('#status');
+const storage='truhlar1.highlights.v2',themeKey='truhlar1.theme.v1';
+let marks=[],history=[],dark=false,doc=null,refreshTimer=null,painting=false;
+try{marks=JSON.parse(localStorage.getItem(storage)||'[]');if(!Array.isArray(marks))marks=[];dark=localStorage.getItem(themeKey)==='dark'}catch(e){marks=[]}
+const save=()=>{try{localStorage.setItem(storage,JSON.stringify(marks))}catch(e){status.textContent='Zvýraznění nelze uložit.'}};
+const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.querySelector('#questionList').innerHTML=DATA.map((sec,i)=>
+ '<details class="q-section" '+(i===0?'open':'')+'><summary>'+esc(sec.name)+'<small>'+esc(sec.page)+'</small></summary>'+
+ sec.qa.map(([q,a],j)=>'<div class="qa"><b>'+(j+1)+'. '+esc(q)+'</b><p>'+esc(a)+'</p></div>').join('')+'</details>'
+).join('');
+function toggleQuestions(on){
+ panel.classList.toggle('open',on);qBtn.setAttribute('aria-expanded',String(on));
 }
-function offset(d,container,at){
- let total=0;
- const w=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT);let n;
+qBtn.onclick=()=>toggleQuestions(!panel.classList.contains('open'));
+document.querySelector('#closeQuestions').onclick=()=>toggleQuestions(false);
+
+function nodes(){
+ if(!doc)return [];
+ const w=doc.createTreeWalker(doc.body,NodeFilter.SHOW_TEXT);
+ const a=[];let n;
  while(n=w.nextNode()){
-  if(n===container)return total+at;
-  if(n.parentNode===container)return total;
-  total+=n.textContent.length;
+  if(n.parentElement?.closest('script,style,noscript,textarea,svg'))continue;
+  a.push(n);
  }
- return -1;
+ return a;
 }
-function position(nodes,index){
- let i=index;
- for(const n of nodes){if(i<=n.textContent.length)return [n,i];i-=n.textContent.length}
- const n=nodes[nodes.length-1];return n?[n,n.textContent.length]:null;
+function offsets(range){
+ let start=-1,end=-1,count=0;
+ for(const n of nodes()){
+  if(n===range.startContainer)start=count+range.startOffset;
+  if(n===range.endContainer)end=count+range.endOffset;
+  // Range boundaries can be elements, such as a selected whole paragraph.
+  const nr=doc.createRange();nr.selectNodeContents(n);
+  if(start<0 && range.compareBoundaryPoints(Range.START_TO_START,nr)<=0 && range.compareBoundaryPoints(Range.END_TO_END,nr)>0)start=count;
+  if(end<0 && range.compareBoundaryPoints(Range.END_TO_END,nr)>=0 && range.compareBoundaryPoints(Range.START_TO_START,nr)<0)end=count+n.length;
+  count+=n.length;
+ }
+ if(start<0||end<=start)return null;
+ return [start,end];
 }
-function rangeFrom(start,end){
- const nodes=textNodes(doc);let a=position(nodes,start),b=position(nodes,end);
- if(!a||!b)return null;
- const r=doc.createRange();try{r.setStart(...a);r.setEnd(...b);return r}catch(e){return null}
+function rangeAt(from,to){
+ const all=nodes();let start=null,end=null,pos=0;
+ for(const n of all){
+  if(start===null&&from>=pos&&from<=pos+n.length)start=[n,from-pos];
+  if(to>=pos&&to<=pos+n.length){end=[n,to-pos];break}
+  pos+=n.length;
+ }
+ if(!start||!end)return null;
+ const r=doc.createRange();
+ try{r.setStart(...start);r.setEnd(...end);return r}catch(e){return null}
+}
+function clearOldMarks(){
+ if(!doc)return;
+ const old=[...doc.querySelectorAll('mark.study-user-highlight')];
+ for(const el of old)el.replaceWith(doc.createTextNode(el.textContent));
+}
+function fallbackPaint(){
+ clearOldMarks();
+ // Use stable text offsets; perform in reverse order to avoid invalidating earlier offsets.
+ for(const m of [...marks].sort((a,b)=>b.from-a.from)){
+  let base=0;const ns=nodes().map(n=>{const x={n,from:base,to:base+n.length};base+=n.length;return x});
+  for(let i=ns.length-1;i>=0;i--){
+   const {n,from,to}=ns[i];if(to<=m.from||from>=m.to)continue;
+   let piece=n;const a=Math.max(0,m.from-from),b=Math.min(n.length,m.to-from);
+   if(b<piece.length)piece.splitText(b);
+   if(a>0)piece=piece.splitText(a);
+   const mark=doc.createElement('mark');mark.className='study-user-highlight';
+   piece.replaceWith(mark);mark.appendChild(piece);
+  }
+ }
+}
+function paint(){
+ if(!doc||painting)return;painting=true;
+ try{
+  if(doc.defaultView.CSS?.highlights && doc.defaultView.Highlight){
+   clearOldMarks();
+   const ranges=marks.map(m=>rangeAt(m.from,m.to)).filter(Boolean);
+   doc.defaultView.CSS.highlights.set('study-user',new doc.defaultView.Highlight(...ranges));
+  }else fallbackPaint();
+  status.textContent=marks.length+' zvýraznění · opakovaný výběr je odstraní';
+ }finally{painting=false}
+}
+function choose(){
+ if(!doc)return;
+ const sel=doc.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount)return;
+ const r=sel.getRangeAt(0);
+ if(!doc.body.contains(r.commonAncestorContainer))return;
+ const pair=offsets(r);if(!pair)return;
+ const [from,to]=pair;
+ history.push(marks.map(m=>({...m})));if(history.length>30)history.shift();
+ // Toggle: selecting a highlighted interval again removes it; partial overlap
+ // removes the selected portion while retaining the rest.
+ const intersects=marks.some(m=>m.from<to&&m.to>from);
+ if(intersects){
+  marks=marks.flatMap(m=>{
+   if(m.to<=from||m.from>=to)return [m];
+   const split=[];if(m.from<from)split.push({from:m.from,to:from});
+   if(m.to>to)split.push({from:to,to:m.to});
+   return split;
+  });
+ }else marks.push({from,to});
+ marks.sort((a,b)=>a.from-b.from);
+ save();sel.removeAllRanges();paint();
 }
 function applyTheme(){
  document.body.classList.toggle('dark',dark);
  themeBtn.textContent=dark?'☀️ Světlý režim':'🌙 Tmavý režim';
  themeBtn.setAttribute('aria-pressed',String(dark));
+ // Inversion covers fixed inline/background colors in the legacy HTML reader.
+ frame.style.filter=dark?'invert(1) hue-rotate(180deg)':'none';
  if(!doc)return;
- let css=doc.getElementById('study-dark-mode');
- if(!css){css=doc.createElement('style');css.id='study-dark-mode';doc.head.appendChild(css)}
- css.textContent=dark? `
- :root{color-scheme:dark!important}
- html,body{background:#101722!important;color:#e6edf5!important}
- body,main,article,section,nav,aside,header,footer,[class*="card"],[class*="panel"],[class*="sidebar"],[class*="content"]{background-color:#172231!important;color:#e6edf5!important}
- h1,h2,h3,h4,h5,h6,p,li,dt,dd,summary,small,strong,b,span{color:inherit}
- a{color:#93c5fd!important}button,input,select,textarea{background-color:#263448!important;color:#eef4fa!important;border-color:#52657c!important}
- table,th,td{background-color:#172231!important;color:#e6edf5!important;border-color:#475569!important}
- pre,code,blockquote{background-color:#263448!important;color:#edf2f7!important}
- img,video,svg,canvas{color-scheme:light!important}
- `:'';
-}
-function paint(){
- if(!doc)return;
- if(doc.defaultView.CSS && doc.defaultView.CSS.highlights && doc.defaultView.Highlight){
-  const ranges=items.map(i=>rangeFrom(i.start,i.end)).filter(Boolean);
-  try{doc.defaultView.CSS.highlights.set('study-highlight',new doc.defaultView.Highlight(...ranges))}catch(e){}
- }
- show(items.length?items.length+' zvýraznění uloženo':'Zvýrazníš text tahem myši.');
-}
-function schedulePaint(){
- if(renderPending)return;renderPending=true;
- requestAnimationFrame(()=>{renderPending=false;paint()});
-}
-function onSelection(){
- const s=doc.getSelection();if(!s||s.isCollapsed||!s.rangeCount)return;
- const r=s.getRangeAt(0);
- if(!doc.body.contains(r.commonAncestorContainer))return;
- const a=offset(doc,r.startContainer,r.startOffset);
- const b=offset(doc,r.endContainer,r.endOffset);
- const text=s.toString().trim();
- if(a<0||b<=a||!text)return;
- if(!items.some(x=>x.start===a&&x.end===b)){items.push({start:a,end:b,text:text.slice(0,80)});store();paint()}
- s.removeAllRanges();
+ let st=doc.getElementById('study-mode-patch');
+ if(!st){st=doc.createElement('style');st.id='study-mode-patch';doc.head.appendChild(st)}
+ st.textContent='::highlight(study-user){background:#ffdc62!important;color:#1d1c14!important} mark.study-user-highlight{background:#ffdc62!important;color:#1d1c14!important}'+
+ (dark?'img,video,canvas{filter:invert(1) hue-rotate(180deg)!important}':'');
 }
 function init(){
  try{
   doc=frame.contentDocument;
-  if(!doc||!doc.body)throw Error('no document');
-  const style=doc.createElement('style');
-  style.textContent='::highlight(study-highlight){background:#ffda63!important;color:#171717!important}::selection{background:#9ccaff}';
-  doc.head.appendChild(style);
-  doc.addEventListener('mouseup',()=>setTimeout(onSelection,0));
-  doc.addEventListener('keyup',e=>{if(e.key==='Shift')onSelection()});
-  if(observer)observer.disconnect();
-  observer=new MutationObserver(schedulePaint);
-  observer.observe(doc.body,{childList:true,subtree:true});
+  if(!doc?.body)throw Error('unavailable iframe');
+  doc.addEventListener('mouseup',()=>setTimeout(choose,0));
+  doc.addEventListener('keyup',e=>{if(e.key==='Shift')choose()});
+  doc.addEventListener('click',()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(paint,120)},true);
   applyTheme();paint();
- }catch(e){show('Stránku otevři přes GitHub Pages, ne jako soubor v náhledu.')}
+ }catch(e){status.textContent='Otevři aplikaci přes GitHub Pages.'}
 }
-themeBtn.addEventListener('click',()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme()});
-document.getElementById('undo').addEventListener('click',()=>{items.pop();store();paint()});
-document.getElementById('clear').addEventListener('click',()=>{
- if(!items.length)return;
- if(!confirm('Opravdu smazat všechna zvýraznění?'))return;
- items=[];store();paint();
-});
 frame.addEventListener('load',init);
+themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme()};
+document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
+document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
 applyTheme();
 })();
-</script>
-</body>
-</html>
+</script></body></html>
