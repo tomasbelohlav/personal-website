@@ -202,102 +202,156 @@ themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'
 document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
 document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
 
-/* CZ / EN on-demand reading translation. Original Czech is never overwritten in
-   storage. Translation needs Internet; translated phrases are cached locally. */
+/* Offline Czech/English study version. All English strings are hosted beside
+   the study HTML, never sent to a translation API. */
 const langBtn=document.getElementById('lang');
-let language='cs',translating=false,translatorCache={};
-try{translatorCache=JSON.parse(localStorage.getItem('truhlar1.en.cache.v1')||'{}')||{};language=localStorage.getItem('truhlar1.language.v1')||'cs'}catch(e){}
-const englishUI={
- 'Truhlář 1':'Woodworking 1',
- 'Kontrolní otázky a odpovědi':'Review questions and answers',
- 'Otázky a odpovědi':'Questions & answers',
- 'Smazat zvýraznění':'Clear highlights',
- 'Tmavý režim':'Dark mode',
- 'Světlý režim':'Light mode',
- 'Zpět':'Undo',
- 'Podstatné znalosti z kapitoly':'Essential knowledge',
- 'Původní text kapitoly':'Original Czech source text'
-};
-const originalText=new WeakMap();
-let activeJob=0;
-const textTranslationTargets=()=>{
- if(!doc)return[];
- const selectors='article h1, article h2, article h3, article .summary, article .learning p, article .learning li, article .facts dt, article .facts dd, article .questions p, article .red, nav a, .group';
- const es=[...doc.querySelectorAll(selectors)];
- return es.filter(e=>!e.closest('.original,pre,script,style')&&!e.querySelector('img')&&e.textContent.trim().length>0);
-};
-async function translatePhrase(cs){
- const str=cs.trim();if(!str)return cs;
- if(englishUI[str])return englishUI[str];
- if(translatorCache[str])return translatorCache[str];
- // Browser built-in translation is preferred when supported.
- try{
-  if(typeof Translator!=='undefined'&&Translator.create){
-   if(!window.studyTranslator)window.studyTranslator=await Translator.create({sourceLanguage:'cs',targetLanguage:'en'});
-   const translated=await window.studyTranslator.translate(str);
-   if(translated){translatorCache[str]=translated;return translated}
+let language='cs',engSections=null,engQuestions=null;
+const originals=new Map();
+const articleQuestions=[['s0',0],['s4',1],['s5',2],['s6',3],['s6',4],['s7',5],['s8',6],['s9',7],['s10',8],['s11',9],['s13',10],['s14',11],['s15',12],['s16',13],['s17',14],['s18',15],['s19',16]];
+const saveOriginal=el=>{if(el&&!originals.has(el))originals.set(el,el.innerHTML)};
+const replace= (el,t)=>{if(el && t!==undefined && t!==null){saveOriginal(el);el.textContent=t}};
+const restore=()=>{for(const [el,html] of originals)if(el.isConnected)el.innerHTML=html;originals.clear()};
+function translateReader(){
+ if(!doc||!engSections)return;
+ doc.documentElement.lang='en';
+ const head=doc.querySelector('header');
+ if(head){
+  replace(head.querySelector('strong'),'WOODWORKING 1');
+  replace(head.querySelector('small'),'Complete study guide');
+  for(const a of head.querySelectorAll('.actions a')){
+   const t=a.textContent.trim();
+   if(/otáz|odpověd/i.test(t))replace(a,'Questions and answers');
   }
- }catch(e){}
- // MyMemory public API is used only when the user selects English. Internet
- // access and service quotas are required; any failure retains Czech text.
- try{
-  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(str.slice(0,450))+'&langpair=cs%7Cen';
-  const response=await fetch(url,{signal:AbortSignal.timeout(9000)});
-  if(!response.ok)throw Error('translation service unavailable');
-  const data=await response.json();
-  const translated=data.responseData?.translatedText;
-  if(!translated||/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(translated))throw Error('translation quota');
-  translatorCache[str]=translated;
-  try{localStorage.setItem('truhlar1.en.cache.v1',JSON.stringify(translatorCache))}catch(e){}
-  return translated;
- }catch(e){return null}
+ }
+ const side=doc.querySelector('aside');
+ if(side){
+  const input=side.querySelector('input');if(input){saveOriginal(input);if(!input.dataset.csPlaceholder)input.dataset.csPlaceholder=input.placeholder;input.placeholder='Search chapters…'}
+  replace(side.querySelector('.muted'),'Browse chapters in the navigation. Click an illustration to enlarge it.');
+  for(const g of side.querySelectorAll('.group')){
+   const v=g.textContent.toLowerCase();
+   replace(g,v.includes('bezpeč')?'Introduction and safety':v.includes('technolog')?'1. Technology terms':v.includes('oprac')?'2. Hand woodworking':v.includes('spojov')?'3. Structural joining':v.includes('materi')?'4. Wood-based materials':'Woodworking');
+  }
+  side.querySelectorAll('nav a[href^="#s"]').forEach(a=>{
+   const i=Number(a.getAttribute('href').slice(2));
+   if(engSections[i])replace(a,a.textContent.replace(/\S.*$/,engSections[i].title)); 
+  });
+ }
+ doc.querySelectorAll('article[id^="s"]').forEach(article=>{
+  const idx=Number(article.id.slice(1)),en=engSections[idx];if(!en)return;
+  replace(article.querySelector('h1'),en.title);
+  const tag=article.querySelector('.tag');if(tag)replace(tag,tag.textContent.replace(/STRANY/g,'PAGES').replace(/STRANA/g,'PAGE'));
+  const head2=article.querySelectorAll(':scope > h2');
+  for(const h of head2){
+   const t=h.textContent.toLowerCase();
+   if(t.includes('základní'))replace(h,'Essential explanation');
+   else if(t.includes('přehled'))replace(h,'Terms and categories at a glance');
+   else if(t.includes('ilustrace'))replace(h,'Key illustrations from the textbook');
+   else if(t.includes('kontrolní otázky'))replace(h,h.textContent.replace('Kontrolní otázky','Review questions').replace('str.','p.'));
+  }
+  replace(article.querySelector('.summary.lead'),en.summary);
+  const learning=article.querySelector('.learning');
+  if(learning){
+   replace(learning.querySelector('h2'),'Essential study notes');
+   learning.querySelectorAll('.study-point').forEach((block,i)=>{
+    const p=en.points?.[i];if(!p)return;
+    replace(block.querySelector('h3'),p[0]);replace(block.querySelector('p'),p[1]);
+   });
+  }
+  const dt=article.querySelectorAll('.facts dt'),dd=article.querySelectorAll('.facts dd');
+  en.facts?.forEach((p,i)=>{replace(dt[i],p[0]);replace(dd[i],p[1])});
+  article.querySelectorAll('.red').forEach((el,i)=>{
+   const text=en.red?.[i];if(!text)return;
+   const links=[...el.querySelectorAll('a')].map(a=>a.cloneNode(true));
+   replace(el,text);
+   for(const a of links){a.textContent='Verify source';el.append(' ',a)}
+  });
+  article.querySelectorAll('figcaption').forEach(el=>{
+   replace(el,el.textContent.replace(/Strana\s*(\d+)\s*·\s*kliknutím zvětšit/i,'Page $1 · click to enlarge'));
+  });
+  const original=article.querySelector('.original summary');
+  replace(original,'Original Czech textbook text (expand)');
+ });
+ const count={};
+ for(const [id,qi] of articleQuestions){
+  const root=doc.getElementById(id);if(!root)continue;
+  const blockNo=count[id]||0;count[id]=blockNo+1;
+  const block=root.querySelectorAll('.questions')[blockNo],translated=engQuestions?.[qi];if(!block||!translated)continue;
+  const q=[...block.querySelectorAll(':scope > p:not(.study-inline-answer)')];
+  q.forEach((node,j)=>{
+   if(!translated[j])return;
+   replace(node,(j+1)+'. '+translated[j][0]);
+   const answer=node.nextElementSibling;
+   if(answer?.classList.contains('study-inline-answer'))replace(answer,translated[j][1]);
+  });
+ }
+ // The embedded original source remains deliberately in Czech.
 }
-function setLanguageChrome(){
+function translateQuestionPanel(){
+ const q=panel.querySelectorAll('.q-section');
+ q.forEach((section,i)=>{
+  const entries=engQuestions?.[i];if(!entries)return;
+  const label=section.querySelector('summary');
+  replace(label,engSections?.[Number(articleQuestions[i][0].slice(1))]?.title ||DATA[i].name);
+  const page=doc?.createElement('small')||document.createElement('small');
+  page.textContent='p. '+DATA[i].page.replace(/\D/g,'');
+  label.appendChild(page);
+  section.querySelectorAll('.qa').forEach((node,j)=>{
+   if(!entries[j])return;
+   replace(node.querySelector('b'),(j+1)+'. '+entries[j][0]);
+   replace(node.querySelector('p'),entries[j][1]);
+  });
+ });
+}
+function updateChrome(){
  langBtn.textContent=language==='cs'?'EN':'CZ';
  langBtn.title=language==='cs'?'Switch to English':'Přepnout do češtiny';
  langBtn.setAttribute('aria-pressed',String(language==='en'));
- qBtn.textContent=language==='en'?'Questions & answers':'Otázky a odpovědi';
- document.getElementById('clear').textContent=language==='en'?'Clear highlights':'Smazat zvýraznění';
- document.querySelector('.q-head strong').textContent=language==='en'?'Review questions and answers':'Kontrolní otázky a odpovědi';
+ document.documentElement.lang=language;
+ const en=language==='en';
+ qBtn.textContent=en?'Questions and answers':'Otázky a odpovědi';
+ document.querySelector('#clear').textContent=en?'Clear highlights':'Smazat zvýraznění';
+ document.querySelector('#undo').textContent=en?'↶ Undo':'↶ Zpět';
+ document.querySelector('.q-head strong').textContent=en?'Review questions and answers':'Kontrolní otázky a odpovědi';
+ document.querySelector('.title').firstChild.textContent=en?'Woodworking 1 ':'Truhlář 1 ';
 }
-async function changeLanguage(next){
- language=next;
- try{localStorage.setItem('truhlar1.language.v1',language)}catch(e){}
- setLanguageChrome();
- const job=++activeJob;
- if(language==='cs'){
-  if(doc)for(const el of textTranslationTargets())if(originalText.has(el))el.textContent=originalText.get(el);
-  for(const el of panel.querySelectorAll('[data-original-cs]'))el.textContent=el.getAttribute('data-original-cs');
-  paint();return;
+function applyLanguage(){
+ restore();
+ if(doc){
+  const input=doc.querySelector('aside input');
+  if(input?.dataset.csPlaceholder)input.placeholder=input.dataset.csPlaceholder;
  }
- if(!doc)return;
- status.textContent='Translating… (online)';
- // Show translated question/answer content without changing chapter structure.
- const qEls=[...panel.querySelectorAll('.q-section summary,.qa b,.qa p')];
- for(const el of qEls)if(!el.hasAttribute('data-original-cs'))el.setAttribute('data-original-cs',el.textContent);
- const els=[...textTranslationTargets(),...qEls];
- let failures=0;
- // Small batches avoid exhausting a public translation API. Process only
- // distinct strings and retain originals where translation fails.
- for(let i=0;i<els.length;i+=3){
-  if(job!==activeJob||language!=='en')return;
-  const batch=els.slice(i,i+3);
-  await Promise.all(batch.map(async el=>{
-   if(!originalText.has(el))originalText.set(el,el.textContent);
-   const cs=el.hasAttribute('data-original-cs')?el.getAttribute('data-original-cs'):originalText.get(el);
-   if(!cs||!cs.trim())return;
-   const translated=await translatePhrase(cs);
-   if(job!==activeJob||language!=='en')return;
-   if(translated){el.textContent=translated}else failures++;
-  }));
- }
- if(job!==activeJob)return;
- status.textContent=failures?'English: some sections could not be translated (online service limit)':'English translation ready';
+ if(language==='en'){translateReader();translateQuestionPanel()}
+ else if(doc)doc.documentElement.lang='cs';
+ updateChrome();
  paint();
 }
+async function loadEnglish(){
+ if(engSections&&engQuestions)return true;
+ try{
+  const [a,b,c]=await Promise.all([
+   fetch('./en-study-part1.json'),fetch('./en-study-part2.json'),fetch('./en-questions.json')
+  ]);
+  if(!a.ok||!b.ok||!c.ok)throw new Error('English assets could not be loaded');
+  const [left,right,questions]=await Promise.all([a.json(),b.json(),c.json()]);
+  if(left.length!==10||right.length!==10||questions.length!==17)throw new Error('Unexpected translation data');
+  engSections=[...left,...right];engQuestions=questions;return true;
+ }catch(e){
+  status.textContent='English content unavailable: check hosted files';
+  return false;
+ }
+}
+async function changeLanguage(next){
+ if(next==='en' && !(await loadEnglish()))return;
+ if(language===next && originals.size)return;
+ language=next;
+ try{localStorage.setItem('truhlar1.language.v2',language)}catch(e){}
+ applyLanguage();
+}
 langBtn.onclick=()=>changeLanguage(language==='cs'?'en':'cs');
-frame.addEventListener('load',()=>{if(language==='en')changeLanguage('en')});
-setLanguageChrome();
+frame.addEventListener('load',()=>{if(language==='en')applyLanguage()});
+try{language=localStorage.getItem('truhlar1.language.v2')==='en'?'en':'cs'}catch(e){}
+updateChrome();
+if(language==='en')loadEnglish().then(ok=>{if(ok)applyLanguage()});
 
 applyTheme();
 })();
