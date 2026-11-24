@@ -35,6 +35,7 @@ body.dark .q-section{border-color:#36485e}
  <button id="undo" title="Vrátit poslední změnu zvýraznění">↶ Zpět</button>
  <button id="clear">Smazat zvýraznění</button>
  <button id="toggleQuestions" aria-expanded="false">Otázky a odpovědi</button>
+ <button id="lang" aria-pressed="false" title="Přeložit studijní text a otázky do angličtiny; vyžaduje internet">EN</button>
  <button id="theme" aria-pressed="false">🌙 Tmavý režim</button>
 </header>
 <main class="workspace">
@@ -178,6 +179,104 @@ frame.addEventListener('load',init);
 themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme()};
 document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
 document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
+
+/* CZ / EN on-demand reading translation. Original Czech is never overwritten in
+   storage. Translation needs Internet; translated phrases are cached locally. */
+const langBtn=document.getElementById('lang');
+let language='cs',translating=false,translatorCache={};
+try{translatorCache=JSON.parse(localStorage.getItem('truhlar1.en.cache.v1')||'{}')||{};language=localStorage.getItem('truhlar1.language.v1')||'cs'}catch(e){}
+const englishUI={
+ 'Truhlář 1':'Woodworking 1',
+ 'Kontrolní otázky a odpovědi':'Review questions and answers',
+ 'Otázky a odpovědi':'Questions & answers',
+ 'Smazat zvýraznění':'Clear highlights',
+ 'Tmavý režim':'Dark mode',
+ 'Světlý režim':'Light mode',
+ 'Zpět':'Undo',
+ 'Podstatné znalosti z kapitoly':'Essential knowledge',
+ 'Původní text kapitoly':'Original Czech source text'
+};
+const originalText=new WeakMap();
+let activeJob=0;
+const textTranslationTargets=()=>{
+ if(!doc)return[];
+ const selectors='article h1, article h2, article h3, article .summary, article .learning p, article .learning li, article .facts dt, article .facts dd, article .questions p, article .red, nav a, .group';
+ const es=[...doc.querySelectorAll(selectors)];
+ return es.filter(e=>!e.closest('.original,pre,script,style')&&!e.querySelector('img')&&e.textContent.trim().length>0);
+};
+async function translatePhrase(cs){
+ const str=cs.trim();if(!str)return cs;
+ if(englishUI[str])return englishUI[str];
+ if(translatorCache[str])return translatorCache[str];
+ // Browser built-in translation is preferred when supported.
+ try{
+  if(typeof Translator!=='undefined'&&Translator.create){
+   if(!window.studyTranslator)window.studyTranslator=await Translator.create({sourceLanguage:'cs',targetLanguage:'en'});
+   const translated=await window.studyTranslator.translate(str);
+   if(translated){translatorCache[str]=translated;return translated}
+  }
+ }catch(e){}
+ // MyMemory public API is used only when the user selects English. Internet
+ // access and service quotas are required; any failure retains Czech text.
+ try{
+  const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(str.slice(0,450))+'&langpair=cs%7Cen';
+  const response=await fetch(url,{signal:AbortSignal.timeout(9000)});
+  if(!response.ok)throw Error('translation service unavailable');
+  const data=await response.json();
+  const translated=data.responseData?.translatedText;
+  if(!translated||/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(translated))throw Error('translation quota');
+  translatorCache[str]=translated;
+  try{localStorage.setItem('truhlar1.en.cache.v1',JSON.stringify(translatorCache))}catch(e){}
+  return translated;
+ }catch(e){return null}
+}
+function setLanguageChrome(){
+ langBtn.textContent=language==='cs'?'EN':'CZ';
+ langBtn.title=language==='cs'?'Switch to English':'Přepnout do češtiny';
+ langBtn.setAttribute('aria-pressed',String(language==='en'));
+ qBtn.textContent=language==='en'?'Questions & answers':'Otázky a odpovědi';
+ document.getElementById('clear').textContent=language==='en'?'Clear highlights':'Smazat zvýraznění';
+ document.querySelector('.q-head strong').textContent=language==='en'?'Review questions and answers':'Kontrolní otázky a odpovědi';
+}
+async function changeLanguage(next){
+ language=next;
+ try{localStorage.setItem('truhlar1.language.v1',language)}catch(e){}
+ setLanguageChrome();
+ const job=++activeJob;
+ if(language==='cs'){
+  if(doc)for(const el of textTranslationTargets())if(originalText.has(el))el.textContent=originalText.get(el);
+  for(const el of panel.querySelectorAll('[data-original-cs]'))el.textContent=el.getAttribute('data-original-cs');
+  paint();return;
+ }
+ if(!doc)return;
+ status.textContent='Translating… (online)';
+ // Show translated question/answer content without changing chapter structure.
+ const qEls=[...panel.querySelectorAll('.q-section summary,.qa b,.qa p')];
+ for(const el of qEls)if(!el.hasAttribute('data-original-cs'))el.setAttribute('data-original-cs',el.textContent);
+ const els=[...textTranslationTargets(),...qEls];
+ let failures=0;
+ // Small batches avoid exhausting a public translation API. Process only
+ // distinct strings and retain originals where translation fails.
+ for(let i=0;i<els.length;i+=3){
+  if(job!==activeJob||language!=='en')return;
+  const batch=els.slice(i,i+3);
+  await Promise.all(batch.map(async el=>{
+   if(!originalText.has(el))originalText.set(el,el.textContent);
+   const cs=el.hasAttribute('data-original-cs')?el.getAttribute('data-original-cs'):originalText.get(el);
+   if(!cs||!cs.trim())return;
+   const translated=await translatePhrase(cs);
+   if(job!==activeJob||language!=='en')return;
+   if(translated){el.textContent=translated}else failures++;
+  }));
+ }
+ if(job!==activeJob)return;
+ status.textContent=failures?'English: some sections could not be translated (online service limit)':'English translation ready';
+ paint();
+}
+langBtn.onclick=()=>changeLanguage(language==='cs'?'en':'cs');
+frame.addEventListener('load',()=>{if(language==='en')changeLanguage('en')});
+setLanguageChrome();
+
 applyTheme();
 })();
 </script></body></html>
