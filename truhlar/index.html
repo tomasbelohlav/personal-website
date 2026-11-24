@@ -28,39 +28,6 @@ body.dark .qa p,body.dark .hint,body.dark .q-section small{color:#b3c0d1}
 body.dark .q-section{border-color:#36485e}
 @media(max-width:850px){#questions{position:absolute;right:0;top:0;bottom:0;width:min(100%,490px);box-shadow:-5px 0 18px #0002;z-index:4}#status{display:none}.title{width:100%}}
 
-#englishView{display:none;position:absolute;inset:0;overflow:auto;background:#f8fafc;color:#1b2633;z-index:3}
-#englishView.visible{display:block}
-.en-grid{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:100%}
-.en-nav{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:24px 16px;background:#eaf0f5;border-right:1px solid #d2dbe5}
-.en-nav a{display:block;color:#264c6d;text-decoration:none;font-size:13px;line-height:1.4;padding:7px 5px;border-radius:6px}
-.en-nav a:hover{background:#d8e4ee}
-.en-main{padding:30px clamp(18px,4vw,68px);max-width:1100px;width:100%;margin:auto}
-.en-chapter{scroll-margin-top:20px;padding:10px 0 55px;border-bottom:1px solid #d5dee6}
-.en-chapter h1{font-size:29px;line-height:1.25;margin:12px 0 18px}
-.en-chapter h2{font-size:19px;margin:28px 0 12px}
-.en-chapter h3{font-size:16px;margin:17px 0 7px}
-.en-chapter p,.en-chapter li{line-height:1.65;font-size:15px}
-.en-lead{font-size:17px!important;line-height:1.65!important}
-.en-facts{display:grid;grid-template-columns:minmax(140px,1fr) 2fr;gap:0;margin:15px 0}
-.en-facts dt,.en-facts dd{border-bottom:1px solid #dce4ed;padding:10px 8px;margin:0;line-height:1.5}
-.en-facts dt{font-weight:650}
-.en-warning{color:#9d1d2c;border-left:4px solid #c83a4a;background:#fff1f2;padding:13px 17px;margin:18px 0;border-radius:5px}
-.en-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
-.en-figures figure{margin:0;padding:8px;border:1px solid #d8e1e9;background:white;border-radius:8px}
-.en-figures img{width:100%;height:auto;cursor:zoom-in}
-.en-figures figcaption{font-size:12px;line-height:1.4;margin:7px 0}
-.en-question{padding:12px 0;border-bottom:1px solid #dae2e9}
-.en-question strong{font-size:15px}
-.en-question p{margin:6px 0 3px;padding-left:14px;border-left:3px solid #7caa85}
-.en-zoom{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:1000;cursor:zoom-out}
-.en-zoom img{max-width:96vw;max-height:96vh;object-fit:contain}
-body.dark #englishView{background:#121d2b;color:#edf3fb}
-body.dark .en-nav{background:#1d3043;border-color:#3b5064}
-body.dark .en-nav a{color:#b9d9f5}
-body.dark .en-facts dt,body.dark .en-facts dd,body.dark .en-chapter,body.dark .en-question{border-color:#384a5b}
-body.dark .en-figures figure{background:#202f41;border-color:#40546a}
-body.dark .en-warning{background:#39242a;color:#ffacb7}
-@media(max-width:700px){.en-grid{display:block}.en-nav{position:relative;max-height:190px}.en-main{padding:20px}}
 </style></head>
 <body>
 <header class="toolbar">
@@ -78,7 +45,7 @@ body.dark .en-warning{background:#39242a;color:#ffacb7}
   <div class="q-head"><strong>Kontrolní otázky a odpovědi</strong><button id="closeQuestions" aria-label="Zavřít otázky">✕</button></div>
   <div id="questionList"></div>
  </aside>
- <section id="englishView" aria-label="English study material" hidden></section>
+
 </main>
 <script>
 (() => {
@@ -355,6 +322,7 @@ function updateChrome(){
  status.textContent=en?(marks.length+' highlights saved · select again to remove'):(marks.length+' zvýraznění · opakovaný výběr je odstraní');
 }
 function applyLanguage(){
+ if(doc){try{doc.defaultView.CSS?.highlights?.delete('study-user')}catch(e){}clearOldMarks()}
  restore();
  if(doc){
   const input=doc.querySelector('aside input');
@@ -369,79 +337,31 @@ const EN_STUDY=[{"title":"Workshop safety and occupational health","summary":"Sa
 const EN_QUESTIONS=[[["How do you provide first aid after an injury?","Ensure the scene is safe; check responsiveness and breathing, call 155 and follow the dispatcher. If the person is not breathing normally, start CPR. Apply direct pressure to serious bleeding."],["What is the integrated rescue system?","A coordinated system connecting firefighters, emergency medical services, national police and other responders during emergencies."],["List the emergency telephone numbers.","150 firefighters; 155 ambulance; 158 national police; 156 municipal police; 112 European emergency number."],["What must a water extinguisher not be used on?","In particular, live electrical equipment, burning flammable liquids or burning metals. Match the extinguishing agent to the fire class."]],[["How do you check whether a try square is accurate?","Compare it with another accurate square or flip it against the same reference line and check whether the lines coincide."],["What is a marking gauge used for?","Scribing a line parallel to an edge at a selected offset."],["Set the vernier calliper to 20.5, 30.7 and 27.4 mm.","Set the main scale to the whole millimetres and use the vernier for the tenths; demonstrate each measurement."],["What measuring accuracy is used in furniture making?","The textbook specifies 1 mm for ordinary work; finer measuring is used for precise joints and fittings."]],[["Name the types of frame saw.","Coarse cutting saw, fine tenon saw and narrow turning saw."],["What is a panel saw used for?","Hand cutting comparatively large wood parts, mainly straight cuts."],["Which saw is used for tenons and dovetails?","A fine-toothed tenon saw or fine frame saw."],["What are the rules for sharpening saw teeth?","Clamp the blade, file tooth faces evenly with a triangular file and maintain equal tip height, appropriate tooth profile and set."],["What is the tooth line?","The line through the tips of saw teeth; the tips should be level."],["Which part of the saw tooth is the back?","The sloping surface behind the tooth face."],["How do accidents happen with hand saws?","The blade may jump out of the cut; poor clamping, cutting toward a hand or unsafe storage may cause injury."]],[["Describe the parts of a hand plane.","Body, sole, blade bed, mouth, iron, wedge, handles and, on some planes, a cap iron."],["Identify face, back, edge and bevel on a plane iron.","The face and back are the two main sides; the cutting edge is their intersection and the bevel is the sloped ground surface."],["Why do you lubricate a honing stone?","To carry away swarf, reduce clogging and assist smooth honing. Use the lubricant suitable for the stone."],["Describe and demonstrate honing a plane iron.","Hold a constant bevel angle on a flat suitable stone, hone evenly, remove the burr from the back and finish on a finer surface."],["What may happen to a blade on a high-speed grinding wheel?","Overheating can draw the temper and soften or damage the cutting edge."],["Which PPE is used at an electric grinding wheel?","Safety glasses or appropriate face protection."]],[["Which face of the wood is oriented toward the bench at the start of planing?","The textbook recommends the left, bark-facing side toward the workbench top."],["Name the main types of hand planes.","Scrub, smoothing, cap-iron and rebate planes; others include jointer, finishing and toothing planes."],["What is a scrub plane used for?","Rapid rough removal of material and initial levelling of uneven surfaces."],["What is a cap iron and why is it used?","A plate fitted to the plane iron that breaks shavings near the edge and reduces grain tear-out."],["Should planes be set down on their soles?","No, not if the blade would touch the surface and be damaged. Set the plane down safely on its side or protect the edge."]],[["Name the types of chisels.","Bench chisels, mortise chisels and curved gouges."],["How are chisels sharpened?","Grind the correct bevel without overheating, then hone away the burr while keeping the blade corners sharp."],["What are the safety rules for using chisels?","Secure the work, never point the blade toward the hand or body, use a suitable mallet and store the blade facing away."]],[["Name at least four types of wood drill bits.","Centre bit, auger bit, spade bit, brad-point twist bit and Forstner bit."],["Is a metalworking drill suitable for wood, and why?","It can be used, but is less suitable because it normally lacks a centre point and spurs, so it may wander and tear fibres."],["What accidents can happen when drilling?","A jammed bit can spin an unsecured workpiece; rotating tools and flying chips can also cause injuries."]],[["Can a file or rasp be used as a lever? Why?","No. Hardened steel is brittle and may snap under bending loads."],["How do you clean a clogged file or rasp?","Use a suitable wire brush; remove resin with an appropriate cleaning agent in accordance with safety instructions."]],[["Why is wood sanded?","To remove small irregularities, even out the surface and prepare it for finishing."],["Which abrasives are used on wood?","Abrasive paper, cloth, sponges, mesh and, for some purposes, abrasive wool."],["What grit sizes are used for coarse sanding, fine sanding and sanding coatings?","The textbook suggests P60–90 for coarse, P100–180 for fine and P220–400 for varnish and filler; select the grade for the finish system."]],[["Is a nailed joint dismantlable?","The textbook groups nails with mechanical joints, but removing them may damage the components; it is not normally a repeatedly reusable connection."],["Where is a bolt-and-barrel-nut connection used? Is it permanent?","For cabinets and seasonal garden furniture; it is a strong but dismantlable joint."],["What shape does a commonly used screw head have?","Often a countersunk head with a cross recess; raised countersunk and round heads are also used."],["How deep should wood screws be predrilled and which drill diameter should be used?","The book suggests around three-quarters of screw length for larger screws; modern practice selects pilot diameter according to the screw core, timber and manufacturer."],["Why is a wooden dowel fluted?","The flutes help distribute adhesive and provide space for glue in the joint."],["What are the advantages and disadvantages of biscuit joints?","Easy alignment and increased glued area; however, a biscuit joiner is required and biscuits cost more than dowels."]],[["What is an edge-glued solid-wood panel?","A flat board assembled by gluing narrower solid-wood strips along their edges."],["What are the basic rules for making such a panel?","Use suitably dried stock, orient the rings, prepare clean straight edges, glue evenly, clamp and check flatness."]],[["Name the types of corner frame joints.","Bridle, mortise-and-tenon, reinforced tenon, lap, dowelled and dovetail joints."],["Where are mortise-and-tenon joints used?","In frames, doors, chairs, tables and other load-bearing joinery."],["Why are mortise widths of 7 or 13 mm problematic?","They may not correspond to standard chisel widths; choose a design and tooling that can create an accurate mortise."],["Name types of dovetail joints and their uses.","Through, half-blind and secret dovetails, especially for drawer and cabinet corners."],["What are dovetails?","Wedge-shaped interlocking tails and pins whose sloping sides resist pulling the joint apart."]],[["What is wood plasticization?","Temporarily softening wood with heat and moisture to facilitate bending and veneer production."],["Name plasticization methods.","Steaming and boiling, using moist heat."],["Describe natural drying of lumber and where it takes place.","Timber is stacked with stickers in a ventilated, sheltered yard and dries in ambient air."],["Describe artificial drying of lumber and where it takes place.","Kiln dryers control temperature, humidity and airflow according to a drying schedule."],["What fire risks arise in woodworking plants?","Fire and combustible-dust explosions involving fine dust, sawdust and wood waste."],["From which harmful influences must wood be protected?","Excess moisture, fungi, mould, insects, weather exposure and fire."],["What types of wood protection are used?","Design-based protection keeps wood dry and ventilated; chemical protection uses suitable preservatives for the exposure conditions."],["List three design-based measures for protecting wood.","Provide drainage and ventilation, keep wood above ground and use protective overhangs and suitable detailing."]],[["List the main sawn-timber products.","Boards, thick planks, beams, small squared timbers, battens and strips; edged and unedged timber."]],[["What is log plasticization and which constituent is affected?","Heat and moisture soften logs before peeling and slicing veneer; lignin in the cell walls is particularly important."],["Name methods of veneer production.","Sawing, slicing and rotary peeling."],["Briefly describe plywood manufacture.","Prepare and dry veneers, apply glue, arrange layers usually with crossed grain directions, hot-press and finish."]],[["What is blockboard made of?","A wooden strip core faced with veneer on both sides."],["Which types of blockboard cores are distinguished?","Unglued and edge-glued strip cores."],["What materials are used in blockboard with glued cores?","Mainly prepared solid-wood laths or other suitable wood elements depending on the design."]],[["What are engineered particle and fibre panels?","Boards made from wood chips, strands or fibres bonded and pressed into sheets."],["What is OSB?","Oriented strand board, made of layers of long, aligned wood strands bonded under pressure."],["How is MDF manufactured?","Wood is broken down into fibres, mixed with binder, formed into a mat and hot-pressed to medium-density fibreboard."]]];
 engSections=EN_STUDY;engQuestions=EN_QUESTIONS;
 
-const enView=document.getElementById('englishView');
-const safeEn=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let enBuilt=false;
-const mappingByChapter={};
-articleQuestions.forEach(([id,idx])=>{const n=Number(id.slice(1));(mappingByChapter[n]??=[]).push(idx)});
-function buildEnglish(){
- const titles=engSections.map((v,i)=>'<a href="#en-section-'+i+'">'+(i===0?'Safety':(i===1?'1.1':i===2?'1.2':i<11?'2.'+(i-2):i<15?'3.'+(i-10):'4.'+(i-14)))+' '+safeEn(v.title)+'</a>').join('');
- const chapters=engSections.map((v,i)=>{
- const fact=(v.facts||[]).map(([term,desc])=>'<dt>'+safeEn(term)+'</dt><dd>'+safeEn(desc)+'</dd>').join('');
- const notes=(v.points||[]).map(([heading,description])=>'<section><h3>'+safeEn(heading)+'</h3><p>'+safeEn(description)+'</p></section>').join('');
- const warnings=(v.red||[]).map(t=>'<div class="en-warning">'+safeEn(t)+'</div>').join('');
- const q=(mappingByChapter[i]||[]).map(set=>{
-  const lines=engQuestions[set]||[];
-  return '<h2>Review questions · p. '+safeEn(DATA[set]?.page?.replace(/\D/g,'')||'')+'</h2>'+lines.map(([question,answer],j)=>'<div class="en-question"><strong>'+(j+1)+'. '+safeEn(question)+'</strong><p>'+safeEn(answer)+'</p></div>').join('');
- }).join('');
- return '<article class="en-chapter" id="en-section-'+i+'"><h1>'+safeEn(v.title)+'</h1><p class="en-lead">'+safeEn(v.summary)+'</p><h2>Essential study notes</h2>'+notes+'<h2>Key terms and categories</h2><dl class="en-facts">'+fact+'</dl>'+warnings+'<div class="en-illustrations" data-chapter="'+i+'"></div>'+q+'</article>';
- }).join('');
- enView.innerHTML='<div class="en-grid"><nav class="en-nav" aria-label="English chapters"><strong>Contents</strong>'+titles+'</nav><div class="en-main"><h1>Woodworking 1 · Study guide</h1>'+chapters+'</div></div>';
- // Images are reused from the original HTML so the translated view is fully offline.
- if(doc){
-   engSections.forEach((v,i)=>{
-    const source=doc.getElementById('s'+i),target=enView.querySelector('[data-chapter="'+i+'"]');
-    if(!source||!target)return;
-    const figures=source.querySelectorAll('.figures figure');
-    if(!figures.length)return;
-    target.innerHTML='<h2>Important textbook illustrations</h2><div class="en-figures"></div>';
-    const gallery=target.querySelector('.en-figures');
-    figures.forEach((fig,j)=>{
-     const img=fig.querySelector('img');if(!img)return;
-     const f=document.createElement('figure'),copy=document.createElement('img');
-     copy.src=img.currentSrc||img.src;
-     copy.alt='Textbook illustration '+(j+1)+' – '+v.title;
-     copy.loading='lazy';
-     copy.addEventListener('click',()=>{
-      const zoom=document.createElement('div');zoom.className='en-zoom';
-      const larger=document.createElement('img');larger.src=copy.src;larger.alt=copy.alt;
-      zoom.appendChild(larger);zoom.onclick=()=>zoom.remove();
-      document.body.appendChild(zoom);
-     });
-     const caption=document.createElement('figcaption');
-     caption.textContent='Illustration '+(j+1)+' · click to enlarge';
-     f.append(copy,caption);gallery.appendChild(f);
-    });
-   });
- }
- enBuilt=true;
-}
+
+/* Switch the text in the existing reader, never its layout or DOM tree. */
 function switchLanguage(next){
- if(language===next)return;
+ if(next===language)return;
+ try{localStorage.setItem(storage,JSON.stringify(marks))}catch(e){}
  language=next;
- try{localStorage.setItem('truhlar1.language.v2',language)}catch(e){}
- if(language==='en'){
-  buildEnglish();
-  frame.style.visibility='hidden';
-  enView.classList.add('visible');enView.hidden=false;
-  status.textContent='English version · offline';
- }else{
-  enView.classList.remove('visible');enView.hidden=true;
-  frame.style.visibility='visible';
-  status.textContent='Česká verze';
- }
- updateChrome();
+ storage=language==='en'?'truhlar1.highlights.v2.en':'truhlar1.highlights.v2';
+ try{
+  const loaded=JSON.parse(localStorage.getItem(storage)||'[]');
+  marks=Array.isArray(loaded)?loaded:[];
+  localStorage.setItem('truhlar1.language.v2',language);
+ }catch(e){marks=[]}
+ history=[];
+ applyLanguage();
 }
 langBtn.onclick=()=>switchLanguage(language==='cs'?'en':'cs');
-frame.addEventListener('load',()=>{if(language==='en'){buildEnglish();enView.classList.add('visible');enView.hidden=false;frame.style.visibility='hidden'}});
+frame.addEventListener('load',()=>applyLanguage());
 try{language=localStorage.getItem('truhlar1.language.v2')==='en'?'en':'cs'}catch(e){}
 if(language==='en'){
  storage='truhlar1.highlights.v2.en';
- try{const loaded=JSON.parse(localStorage.getItem(storage)||'[]');marks=Array.isArray(loaded)?loaded:[]}catch(e){marks=[]}
+ try{const saved=JSON.parse(localStorage.getItem(storage)||'[]');marks=Array.isArray(saved)?saved:[]}catch(e){marks=[]}
 }
+const originalThemeAction=themeBtn.onclick;
+themeBtn.onclick=()=>{originalThemeAction();updateChrome()};
 updateChrome();
-if(language==='en'){buildEnglish();enView.classList.add('visible');enView.hidden=false;frame.style.visibility='hidden'}
-
 applyTheme();
 })();
 </script></body></html>
