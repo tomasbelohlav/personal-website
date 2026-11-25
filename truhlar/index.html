@@ -66,7 +66,7 @@ body.dark #chapterSearch{border-color:#475569;background:#243349;color:white}
  .toolbar{position:relative!important;top:auto!important;bottom:auto!important}
  .workspace{display:block;position:relative;min-height:0;height:auto;overflow:visible}
  #reader{display:block;width:100%;height:auto;min-height:100vh;overflow:hidden;flex:none}
- #questions{position:fixed;top:0;bottom:0;right:0;max-height:100dvh;overflow-y:auto}
+ #questions{position:relative;inset:auto;top:auto;right:auto;bottom:auto;left:auto;max-height:none;height:auto;width:100%;overflow:visible;box-shadow:none;z-index:auto;border-left:0;border-bottom:1px solid #d9dee5}
 }
 </style></head>
 <body>
@@ -111,6 +111,16 @@ document.querySelector('#questionList').innerHTML=DATA.map((sec,i)=>
 ).join('');
 function toggleQuestions(on){
  panel.classList.toggle('open',on);qBtn.setAttribute('aria-expanded',String(on));
+ if(window.matchMedia('(max-width:850px)').matches){
+  if(on){
+   // Keep the Q&A near the controls, but in normal document flow.
+   frame.before(panel);
+   requestAnimationFrame(()=>panel.scrollIntoView({block:'start',behavior:'smooth'}));
+  }else{
+   frame.after(panel);
+   window.scrollTo({top:Math.max(0,frame.getBoundingClientRect().top+window.scrollY-56),behavior:'instant'});
+  }
+ }
 }
 qBtn.onclick=()=>toggleQuestions(!panel.classList.contains('open'));
 document.querySelector('#closeQuestions').onclick=()=>toggleQuestions(false);
