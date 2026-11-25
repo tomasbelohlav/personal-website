@@ -279,7 +279,13 @@ function hideOriginalNav(){
  if(!doc)return;
  let css=doc.getElementById('study-compact-navigation');
  if(!css){css=doc.createElement('style');css.id='study-compact-navigation';doc.head.appendChild(css)}
- css.textContent='aside{display:none!important}';
+ css.textContent=[
+  /* The desktop study layout uses an aside + content grid.
+     Hiding the aside at desktop widths leaves the article in the narrow
+     navigation column. Hide it only on narrow viewports. */
+  '@media(max-width:850px){aside{display:none!important}}',
+  '@media(min-width:851px){aside{display:block!important}}'
+ ].join('\\n');
 }
 function recordSelection(){
  if(!doc)return;
