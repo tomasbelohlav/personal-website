@@ -284,7 +284,9 @@ function hideOriginalNav(){
      Hiding the aside at desktop widths leaves the article in the narrow
      navigation column. Hide it only on narrow viewports. */
   '@media(max-width:850px){aside{display:none!important}}',
-  '@media(min-width:851px){aside{display:block!important}}'
+  '@media(min-width:851px){aside{display:block!important}}',
+  'header, aside, .sidebar, .site-header{position:static!important;top:auto!important;bottom:auto!important;inset-block-start:auto!important;transform:none!important}',
+  'aside, .sidebar{height:auto!important;max-height:none!important;overflow:visible!important}'
  ].join(' ');
 }
 function recordSelection(){
