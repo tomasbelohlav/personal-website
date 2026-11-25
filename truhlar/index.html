@@ -58,6 +58,16 @@ body.dark #chapterSearch{border-color:#475569;background:#243349;color:white}
  #questions{position:absolute;right:0;top:0;bottom:0;width:min(460px,42vw);max-width:100%;box-shadow:-5px 0 18px #0002;z-index:5}
  #reader{flex:1 1 100%;width:100%;min-width:0}
 }
+
+/* iOS Safari: mobile must scroll the top-level page, not a viewport-height iframe. */
+@media(max-width:850px){
+ html,body{height:auto!important;min-height:100%;overflow-x:hidden;overflow-y:visible}
+ body{display:block}
+ .toolbar{position:relative!important;top:auto!important;bottom:auto!important}
+ .workspace{display:block;position:relative;min-height:0;height:auto;overflow:visible}
+ #reader{display:block;width:100%;height:auto;min-height:100vh;overflow:hidden;flex:none}
+ #questions{position:fixed;top:0;bottom:0;right:0;max-height:100dvh;overflow-y:auto}
+}
 </style></head>
 <body>
 <header class="toolbar">
@@ -238,6 +248,7 @@ function init(){
  }catch(e){status.textContent='Otevři aplikaci přes GitHub Pages.'}
 }
 frame.addEventListener('load',init);
+frame.addEventListener('load',()=>requestAnimationFrame(setupNaturalScroll));
 themeBtn.onclick=()=>{dark=!dark;try{localStorage.setItem(themeKey,dark?'dark':'light')}catch(e){}applyTheme();updateChrome()};
 document.querySelector('#undo').onclick=()=>{if(!history.length)return;marks=history.pop();save();paint()};
 document.querySelector('#clear').onclick=()=>{if(!marks.length||!confirm('Smazat všechna zvýraznění?'))return;history.push(marks.map(m=>({...m})));marks=[];save();paint()};
@@ -478,8 +489,8 @@ function switchLanguage(next){
  selectedInterval=null;
  applyLanguage();
 }
-langBtn.onclick=()=>switchLanguage(language==='cs'?'en':'cs');
-frame.addEventListener('load',()=>applyLanguage());
+langBtn.onclick=()=>{switchLanguage(language==='cs'?'en':'cs');sizeNaturalReader()};
+frame.addEventListener('load',()=>{applyLanguage();sizeNaturalReader()});
 try{language=localStorage.getItem('truhlar1.language.v2')==='en'?'en':'cs'}catch(e){}
 if(language==='en'){
  storage='truhlar1.highlights.v2.en';
@@ -488,6 +499,56 @@ if(language==='en'){
 const originalThemeAction=themeBtn.onclick;
 themeBtn.onclick=()=>{originalThemeAction();updateChrome()};
 updateChrome();
+
+/* Resize same-origin study iframe to its full height on mobile. This makes
+   window.scrollY (rather than iframe scrollTop) move as the reader is read,
+   allowing iOS Safari's browser chrome to collapse naturally. */
+const naturalScrollQuery=window.matchMedia('(max-width:850px)');
+let naturalScrollObserver=null, naturalScrollDoc=null, heightRaf=0;
+function sizeNaturalReader(){
+ if(!doc||!naturalScrollQuery.matches)return;
+ cancelAnimationFrame(heightRaf);
+ heightRaf=requestAnimationFrame(()=>{
+  if(!doc||!naturalScrollQuery.matches)return;
+  const root=doc.documentElement,body=doc.body;
+  const contentHeight=Math.max(
+   root.scrollHeight,body.scrollHeight,root.offsetHeight,body.offsetHeight
+  );
+  if(contentHeight>0&&Math.abs(frame.offsetHeight-contentHeight)>2)
+   frame.style.height=contentHeight+'px';
+ });
+}
+function setupNaturalScroll(){
+ if(naturalScrollObserver){naturalScrollObserver.disconnect();naturalScrollObserver=null}
+ if(!doc||!doc.body)return;
+ if(!naturalScrollQuery.matches){
+  frame.removeAttribute('scrolling');
+  frame.style.height='';
+  const patch=doc.getElementById('study-ios-natural-scroll');
+  if(patch)patch.remove();
+  return;
+ }
+ let patch=doc.getElementById('study-ios-natural-scroll');
+ if(!patch){patch=doc.createElement('style');patch.id='study-ios-natural-scroll';doc.head.appendChild(patch)}
+ patch.textContent=[
+  'html,body{height:auto!important;min-height:0!important;overflow:visible!important}',
+  'body{position:static!important}',
+  'main{height:auto!important;max-height:none!important;overflow:visible!important}',
+  'article,section{max-height:none!important}',
+  'header,aside{position:static!important;top:auto!important;bottom:auto!important}',
+ ].join(' ');
+ frame.setAttribute('scrolling','no');
+ naturalScrollObserver=new ResizeObserver(sizeNaturalReader);
+ naturalScrollObserver.observe(doc.body);
+ naturalScrollObserver.observe(doc.documentElement);
+ doc.querySelectorAll('img').forEach(img=>{
+  if(!img.complete)img.addEventListener('load',sizeNaturalReader,{once:true});
+ });
+ sizeNaturalReader();
+}
+naturalScrollQuery.addEventListener?.('change',setupNaturalScroll);
+window.addEventListener('resize',sizeNaturalReader,{passive:true});
+
 applyTheme();
 })();
 </script></body></html>
