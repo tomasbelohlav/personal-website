@@ -32,7 +32,7 @@ body.dark .q-section{border-color:#36485e}
 .toolbar{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;min-height:0;flex-wrap:nowrap}
 .toolbar-main{display:flex;align-items:center;gap:5px;padding:6px 9px;min-height:46px;flex-wrap:nowrap;white-space:nowrap}
 .toolbar-main button{flex:0 0 auto;padding:7px 9px;min-width:34px;font-size:13px}
-.toolbar-main #toggleContents{font-weight:650}
+.toolbar-main #toggleContents{font-weight:650;width:40px;min-width:40px;display:inline-flex;align-items:center;justify-content:center}
 .toolbar .hint,.toolbar .title,#undo{display:none!important}
 #contentsRow{display:none;align-items:center;gap:8px;border-top:1px solid #d9dee5;padding:6px 10px;background:inherit}
 #contentsRow.open{display:flex}
@@ -62,7 +62,7 @@ body.dark #chapterSearch{border-color:#475569;background:#243349;color:white}
 <body>
 <header class="toolbar">
  <div class="toolbar-main">
-  <button id="toggleContents" aria-expanded="false" aria-controls="contentsRow">Obsah ▾</button>
+  <button id="toggleContents" aria-expanded="false" aria-controls="contentsRow" title="Obsah" aria-label="Otevřít obsah">☰</button>
   <button id="highlight" title="Zvýraznit nebo odstranit výběr" aria-label="Zvýraznit nebo odstranit vybraný text">🖍</button>
   <button id="clear" title="Smazat všechna zvýraznění" aria-label="Smazat všechna zvýraznění">⌫</button>
   <button id="toggleQuestions" aria-expanded="false">Q&A</button>
@@ -251,7 +251,8 @@ const isTouchDevice=()=>window.matchMedia('(pointer:coarse)').matches;
 contentsButton.onclick=()=>{
  const open=contentsRow.classList.toggle('open');
  contentsButton.setAttribute('aria-expanded',String(open));
- contentsButton.textContent=(language==='en'?'Contents':'Obsah')+(open?' ▴':' ▾');
+ contentsButton.setAttribute('aria-label',open?(language==='en'?'Close contents':'Zavřít obsah'):(language==='en'?'Open contents':'Otevřít obsah'));
+ contentsButton.title=language==='en'?'Contents':'Obsah';
  if(open){buildChapterScroller();chapterSearch.value='';filterChapters()}
 };
 function buildChapterScroller(){
@@ -438,7 +439,8 @@ function updateChrome(){
  document.querySelector('.title .hint').textContent=en?'· study reader':'· studijní aplikace';
  themeBtn.textContent=dark?'☀':'☾';
  themeBtn.title=en?(dark?'Light mode':'Dark mode'):(dark?'Světlý režim':'Tmavý režim');
- document.querySelector('#toggleContents').textContent=(en?'Contents':'Obsah')+(contentsRow.classList.contains('open')?' ▴':' ▾');
+ contentsButton.title=en?'Contents':'Obsah';
+ contentsButton.setAttribute('aria-label',contentsRow.classList.contains('open')?(en?'Close contents':'Zavřít obsah'):(en?'Open contents':'Otevřít obsah'));
  document.querySelector('#chapterSearch').placeholder=en?'Search…':'Hledat…';
  buildChapterScroller();
  document.querySelector('#closeQuestions').setAttribute('aria-label',en?'Close questions':'Zavřít otázky');
